@@ -44,15 +44,15 @@ img { max-width: 100%; display: block; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.12);
+  background: var(--scrollbar-thumb);
   border-radius: var(--radius-full);
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
 /* Selection */
 ::selection {
   background: var(--accent);
-  color: var(--bg-primary);
+  color: var(--text-inverse);
 }
 
 /* Animations */

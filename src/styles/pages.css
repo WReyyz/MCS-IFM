@@ -13,21 +13,20 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 20% 50%, rgba(0,212,255,0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 80% at 80% 20%, rgba(99,102,241,0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 70% 60% at 60% 80%, rgba(139,92,246,0.06) 0%, transparent 60%);
+    radial-gradient(ellipse 80% 60% at 20% 50%, rgba(140,198,63,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 20%, rgba(23,59,99,0.09) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 60% at 60% 80%, rgba(14,36,57,0.06) 0%, transparent 60%);
   animation: gradientShift 15s ease infinite;
   background-size: 200% 200%;
 }
 .login-card {
   width: 100%;
   max-width: 420px;
-  background: var(--bg-glass);
+  background: #FFFFFF;
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-xl);
   padding: var(--sp-10) var(--sp-8);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  box-shadow: var(--shadow-lg);
   position: relative;
   z-index: 1;
   animation: scaleIn 0.5s ease;

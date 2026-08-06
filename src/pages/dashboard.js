@@ -16,8 +16,8 @@ export async function renderDashboard() {
   content.innerHTML = `
     <div class="stagger">
       <div class="dashboard-top-row stagger">
-        <div class="stat-card animate-fade-in-up" style="--stat-accent:linear-gradient(135deg,#00d4ff,#0099ff);flex:0 0 auto;min-width:200px">
-          <div class="stat-icon" style="background:rgba(0,212,255,0.15);color:#00d4ff">${icons.hardDrive}</div>
+        <div class="stat-card animate-fade-in-up" style="--stat-accent:linear-gradient(135deg,#0E2439,#173B63);flex:0 0 auto;min-width:200px">
+          <div class="stat-icon" style="background:rgba(14,36,57,0.1);color:#0E2439">${icons.hardDrive}</div>
           <div class="stat-value" id="stat-equip">0</div>
           <div class="stat-label">Total Inventory</div>
           <div class="stat-sub" id="stat-equip-sub">-</div>
@@ -103,7 +103,7 @@ async function loadDashboardData() {
             {
               label: 'WO Closed',
               data: dailyStats.map(d => d.closed),
-              backgroundColor: 'rgba(16,185,129,0.8)',
+              backgroundColor: 'rgba(140,198,63,0.85)',
               borderRadius: 3,
               borderSkipped: false,
               stack: 'stack1',
@@ -112,7 +112,7 @@ async function loadDashboardData() {
             {
               label: 'WO Open',
               data: dailyStats.map(d => d.open),
-              backgroundColor: 'rgba(59,130,246,0.8)',
+              backgroundColor: 'rgba(23,59,99,0.80)',
               borderRadius: 3,
               borderSkipped: false,
               stack: 'stack1',
@@ -121,7 +121,7 @@ async function loadDashboardData() {
             {
               label: 'WO Hold',
               data: dailyStats.map(d => d.hold),
-              backgroundColor: 'rgba(245,158,11,0.8)',
+              backgroundColor: 'rgba(245,158,11,0.80)',
               borderRadius: 3,
               borderSkipped: false,
               stack: 'stack1',
@@ -131,12 +131,12 @@ async function loadDashboardData() {
               label: 'Total WO Terplan',
               data: dailyStats.map(d => d.totalPlanned),
               type: 'line',
-              borderColor: '#a855f7',
-              backgroundColor: 'rgba(168,85,247,0.15)',
+              borderColor: '#0E2439',
+              backgroundColor: 'rgba(14,36,57,0.08)',
               borderWidth: 2.5,
               pointRadius: 3,
-              pointBackgroundColor: '#a855f7',
-              pointBorderColor: '#a855f7',
+              pointBackgroundColor: '#0E2439',
+              pointBorderColor: '#0E2439',
               tension: 0.3,
               fill: true,
               order: 1,
@@ -153,7 +153,7 @@ async function loadDashboardData() {
           plugins: {
             legend: {
               labels: {
-                color: '#9ca3af',
+                color: '#6B7280',
                 font: { size: 11 },
                 usePointStyle: true,
                 pointStyle: 'rectRounded',
@@ -161,11 +161,11 @@ async function loadDashboardData() {
               }
             },
             tooltip: {
-              backgroundColor: 'rgba(15,23,42,0.95)',
-              borderColor: 'rgba(255,255,255,0.1)',
+              backgroundColor: 'rgba(14,36,57,0.95)',
+              borderColor: 'rgba(255,255,255,0.12)',
               borderWidth: 1,
-              titleColor: '#e2e8f0',
-              bodyColor: '#cbd5e1',
+              titleColor: '#FFFFFF',
+              bodyColor: 'rgba(255,255,255,0.8)',
               cornerRadius: 8,
               padding: 10,
             }
@@ -173,12 +173,12 @@ async function loadDashboardData() {
           scales: {
             x: {
               ticks: { color: '#6b7280', font: { size: 10 } },
-              grid: { color: 'rgba(255,255,255,0.04)' },
+              grid: { color: 'rgba(14,36,57,0.07)' },
               stacked: true,
             },
             y: {
               ticks: { color: '#6b7280', stepSize: 1 },
-              grid: { color: 'rgba(255,255,255,0.04)' },
+              grid: { color: 'rgba(14,36,57,0.07)' },
               beginAtZero: true,
               stacked: true,
             }
@@ -198,14 +198,14 @@ async function loadDashboardData() {
             {
               label: 'Terbuka',
               data: trend.map(t => t.open),
-              backgroundColor: 'rgba(59,130,246,0.7)',
+              backgroundColor: 'rgba(23,59,99,0.80)',
               borderRadius: 6,
               borderSkipped: false,
             },
             {
               label: 'Selesai',
               data: trend.map(t => t.closed),
-              backgroundColor: 'rgba(16,185,129,0.7)',
+              backgroundColor: 'rgba(140,198,63,0.85)',
               borderRadius: 6,
               borderSkipped: false,
             },
@@ -215,11 +215,11 @@ async function loadDashboardData() {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { labels: { color: '#9ca3af', font: { size: 11 } } }
+            legend: { labels: { color: '#6B7280', font: { size: 11 } } }
           },
           scales: {
-            x: { ticks: { color: '#6b7280' }, grid: { color: 'rgba(255,255,255,0.04)' } },
-            y: { ticks: { color: '#6b7280' }, grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true }
+            x: { ticks: { color: '#6b7280' }, grid: { color: 'rgba(14,36,57,0.07)' } },
+            y: { ticks: { color: '#6b7280' }, grid: { color: 'rgba(14,36,57,0.07)' }, beginAtZero: true }
           }
         }
       });
@@ -250,7 +250,7 @@ async function loadDashboardData() {
           maintainAspectRatio: false,
           cutout: '65%',
           plugins: {
-            legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 12, font: { size: 11 } } }
+            legend: { position: 'bottom', labels: { color: '#6B7280', padding: 12, font: { size: 11 } } }
           }
         }
       });

@@ -1,84 +1,122 @@
 :root {
-  /* ---- Colors ---- */
-  --bg-primary: #0a0e1a;
-  --bg-secondary: #111827;
-  --bg-tertiary: #1a1f36;
-  --bg-card: rgba(255, 255, 255, 0.04);
-  --bg-card-hover: rgba(255, 255, 255, 0.07);
-  --bg-glass: rgba(255, 255, 255, 0.06);
-  --bg-glass-strong: rgba(255, 255, 255, 0.1);
-  --bg-input: rgba(255, 255, 255, 0.06);
-  --bg-sidebar: rgba(10, 14, 30, 0.95);
-  --bg-modal-overlay: rgba(0, 0, 0, 0.6);
+  /* ===== MODERN CORPORATE AVIATION THEME ===== */
+  /* Primary  : #0E2439  Navy Blue               */
+  /* Secondary: #173B63  Dark Blue               */
+  /* Accent   : #8CC63F  Lime Green              */
+  /* Background: #F5F7FA                         */
+  /* Surface  : #FFFFFF                          */
+  /* Border   : #DCE3EA                          */
+  /* Text Pri : #1F2937                          */
+  /* Text Sec : #6B7280                          */
 
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-color-hover: rgba(255, 255, 255, 0.15);
-  --border-glass: rgba(255, 255, 255, 0.1);
+  /* ---- Brand palette ---- */
+  --color-navy:      #0E2439;
+  --color-dark-blue: #173B63;
+  --color-lime:      #8CC63F;
+  --color-lime-dark: #7AB535;
 
-  --text-primary: #f9fafb;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
-  --text-inverse: #0a0e1a;
+  /* ---- Background ---- */
+  --bg-primary:       #F5F7FA;
+  --bg-secondary:     #FFFFFF;
+  --bg-tertiary:      #EBF0F5;
+  --bg-card:          #FFFFFF;
+  --bg-card-hover:    #F5F7FA;
+  --bg-glass:         rgba(14, 36, 57, 0.04);
+  --bg-glass-strong:  rgba(14, 36, 57, 0.09);
+  --bg-input:         #FFFFFF;
+  --bg-sidebar:       #0E2439;
+  --bg-topbar:        rgba(255, 255, 255, 0.95);
+  --bg-modal-overlay: rgba(14, 36, 57, 0.55);
 
-  /* Accent */
-  --accent: #00d4ff;
-  --accent-hover: #00b8e6;
-  --accent-glow: rgba(0, 212, 255, 0.2);
-  --accent-gradient: linear-gradient(135deg, #00d4ff 0%, #6366f1 100%);
-  --accent-gradient-hover: linear-gradient(135deg, #00b8e6 0%, #5855e0 100%);
+  /* ---- Border ---- */
+  --border-color:       #DCE3EA;
+  --border-color-hover: #B0BEC5;
+  --border-glass:       #DCE3EA;
 
-  /* Semantic */
-  --success: #10b981;
-  --success-bg: rgba(16, 185, 129, 0.15);
-  --warning: #f59e0b;
-  --warning-bg: rgba(245, 158, 11, 0.15);
-  --danger: #ef4444;
-  --danger-bg: rgba(239, 68, 68, 0.15);
-  --info: #3b82f6;
-  --info-bg: rgba(59, 130, 246, 0.15);
-  --purple: #8b5cf6;
-  --purple-bg: rgba(139, 92, 246, 0.15);
+  /* ---- Text ---- */
+  --text-primary:   #1F2937;
+  --text-secondary: #6B7280;
+  --text-muted:     #9CA3AF;
+  --text-inverse:   #FFFFFF;
+
+  /* ---- Accent (Lime Green) ---- */
+  --accent:                #8CC63F;
+  --accent-hover:          #7AB535;
+  --accent-glow:           rgba(140, 198, 63, 0.25);
+  --accent-gradient:       linear-gradient(135deg, #8CC63F 0%, #173B63 100%);
+  --accent-gradient-hover: linear-gradient(135deg, #7AB535 0%, #0E2439 100%);
+
+  /* ---- Sidebar (always dark navy — needs dedicated tokens) ---- */
+  --sidebar-nav-color:      rgba(255, 255, 255, 0.62);
+  --sidebar-nav-hover-bg:   rgba(255, 255, 255, 0.08);
+  --sidebar-nav-active-bg:  rgba(140, 198, 63, 0.15);
+  --sidebar-nav-active-clr: #8CC63F;
+  --sidebar-section-color:  rgba(255, 255, 255, 0.35);
+  --sidebar-border:         rgba(255, 255, 255, 0.09);
+  --sidebar-user-name-clr:  #FFFFFF;
+  --sidebar-user-role-clr:  rgba(255, 255, 255, 0.5);
+
+  /* ---- Table ---- */
+  --table-header-bg: #F0F4F8;
+  --table-row-hover: rgba(14, 36, 57, 0.03);
+  --table-border:    rgba(14, 36, 57, 0.07);
+
+  /* ---- Scrollbar ---- */
+  --scrollbar-thumb:       rgba(14, 36, 57, 0.18);
+  --scrollbar-thumb-hover: rgba(14, 36, 57, 0.30);
+
+  /* ---- Semantic (status / badge colors) ---- */
+  --success:    #10b981;
+  --success-bg: rgba(16, 185, 129, 0.12);
+  --warning:    #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.12);
+  --danger:     #ef4444;
+  --danger-bg:  rgba(239, 68, 68, 0.12);
+  --info:       #3b82f6;
+  --info-bg:    rgba(59, 130, 246, 0.12);
+  --purple:     #8b5cf6;
+  --purple-bg:  rgba(139, 92, 246, 0.12);
 
   /* ---- Typography ---- */
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
-  --fs-xs: 0.7rem;
-  --fs-sm: 0.8rem;
+  --fs-xs:   0.7rem;
+  --fs-sm:   0.8rem;
   --fs-base: 0.875rem;
-  --fs-md: 1rem;
-  --fs-lg: 1.125rem;
-  --fs-xl: 1.35rem;
-  --fs-2xl: 1.75rem;
-  --fs-3xl: 2.25rem;
+  --fs-md:   1rem;
+  --fs-lg:   1.125rem;
+  --fs-xl:   1.35rem;
+  --fs-2xl:  1.75rem;
+  --fs-3xl:  2.25rem;
 
-  --fw-normal: 400;
-  --fw-medium: 500;
+  --fw-normal:   400;
+  --fw-medium:   500;
   --fw-semibold: 600;
-  --fw-bold: 700;
+  --fw-bold:     700;
 
   /* ---- Spacing ---- */
-  --sp-1: 0.25rem;
-  --sp-2: 0.5rem;
-  --sp-3: 0.75rem;
-  --sp-4: 1rem;
-  --sp-5: 1.25rem;
-  --sp-6: 1.5rem;
-  --sp-8: 2rem;
+  --sp-1:  0.25rem;
+  --sp-2:  0.5rem;
+  --sp-3:  0.75rem;
+  --sp-4:  1rem;
+  --sp-5:  1.25rem;
+  --sp-6:  1.5rem;
+  --sp-8:  2rem;
   --sp-10: 2.5rem;
   --sp-12: 3rem;
 
   /* ---- Radius ---- */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-xl:   20px;
   --radius-full: 9999px;
 
-  /* ---- Shadows ---- */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
-  --shadow-lg: 0 8px 30px rgba(0,0,0,0.4);
+  /* ---- Shadows (adjusted for light theme) ---- */
+  --shadow-sm:   0 1px 3px rgba(14, 36, 57, 0.07);
+  --shadow-md:   0 4px 12px rgba(14, 36, 57, 0.09);
+  --shadow-lg:   0 8px 30px rgba(14, 36, 57, 0.12);
   --shadow-glow: 0 0 20px var(--accent-glow);
 
   /* ---- Transitions ---- */
@@ -87,7 +125,7 @@
   --transition-slow: 0.4s ease;
 
   /* ---- Layout ---- */
-  --sidebar-width: 260px;
+  --sidebar-width:     260px;
   --sidebar-collapsed: 72px;
-  --topbar-height: 64px;
+  --topbar-height:     64px;
 }

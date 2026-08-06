@@ -13,12 +13,75 @@
   left: 0;
   z-index: 100;
   background: var(--bg-sidebar);
-  border-right: 1px solid var(--border-color);
+  border-right: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   transition: transform var(--transition-base);
+}
+
+/* ---- Sidebar always-dark nav overrides ---- */
+.sidebar .nav-section-title {
+  color: var(--sidebar-section-color);
+}
+.sidebar .nav-item {
+  color: var(--sidebar-nav-color);
+}
+.sidebar .nav-item:hover {
+  background: var(--sidebar-nav-hover-bg);
+  color: var(--sidebar-user-name-clr);
+}
+.sidebar .nav-item.active {
+  background: var(--sidebar-nav-active-bg);
+  color: var(--sidebar-nav-active-clr);
+}
+.sidebar .nav-item.active svg {
+  color: var(--sidebar-nav-active-clr);
+  opacity: 1;
+}
+.sidebar .nav-item.active::before {
+  background: var(--sidebar-nav-active-clr);
+}
+.sidebar-header {
+  padding: var(--sp-5) var(--sp-5);
+  border-bottom: 1px solid var(--sidebar-border);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.sidebar-brand-name {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--sidebar-user-name-clr);
+  line-height: 1.2;
+}
+.sidebar-brand-tag {
+  font-size: var(--fs-xs);
+  color: var(--sidebar-user-role-clr);
+}
+.sidebar-footer {
+  padding: var(--sp-4);
+  border-top: 1px solid var(--sidebar-border);
+}
+.sidebar-user-name {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--sidebar-user-name-clr);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-user-role {
+  font-size: var(--fs-xs);
+  color: var(--sidebar-user-role-clr);
+}
+.sidebar .btn-ghost {
+  color: var(--sidebar-nav-color);
+}
+.sidebar .btn-ghost:hover {
+  background: var(--sidebar-nav-hover-bg);
+  color: var(--sidebar-user-name-clr);
 }
 
 .sidebar-header {
@@ -178,7 +241,7 @@
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--border-color);
-  background: rgba(10, 14, 30, 0.8);
+  background: var(--bg-topbar);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   position: sticky;

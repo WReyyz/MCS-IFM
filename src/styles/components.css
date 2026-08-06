@@ -229,7 +229,7 @@
   border-collapse: collapse;
   font-size: var(--fs-sm);
 }
-.data-table thead { background: rgba(255,255,255,0.03); }
+.data-table thead { background: var(--table-header-bg); }
 .data-table th {
   padding: var(--sp-3) var(--sp-4);
   text-align: left;
@@ -246,11 +246,11 @@
 .data-table th:hover { color: var(--text-primary); }
 .data-table td {
   padding: var(--sp-3) var(--sp-4);
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid var(--table-border);
   vertical-align: middle;
 }
 .data-table tbody tr { transition: background var(--transition-fast); }
-.data-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+.data-table tbody tr:hover { background: var(--table-row-hover); }
 .data-table tbody tr:last-child td { border-bottom: none; }
 
 .table-actions {
@@ -324,7 +324,7 @@
 }
 
 .skeleton {
-  background: linear-gradient(90deg, var(--bg-glass) 25%, rgba(255,255,255,0.08) 50%, var(--bg-glass) 75%);
+  background: linear-gradient(90deg, #E8EDF2 25%, #F5F7FA 50%, #E8EDF2 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: var(--radius-sm);
@@ -343,14 +343,14 @@
   bottom: var(--sp-6);
   left: 50%;
   transform: translateX(-50%) translateY(100px);
-  background: var(--bg-glass);
+  background: #FFFFFF;
   border: 1px solid var(--border-glass);
   padding: var(--sp-3) var(--sp-5);
   border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   gap: var(--sp-4);
-  box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(14,36,57,0.06);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   z-index: 50;
