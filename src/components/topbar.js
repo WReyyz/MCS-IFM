@@ -4,13 +4,16 @@ import { icons } from './icons.js';
 export function renderTopbar(container, title = 'Dashboard') {
   const topbar = document.createElement('header');
   topbar.className = 'topbar';
+  const now = new Date();
+  const fullDate = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const shortDate = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
   topbar.innerHTML = `
     <div class="topbar-left">
-      <button class="mobile-menu-btn" id="mobile-menu-btn">${icons.menu}</button>
+      <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Buka menu">${icons.menu}</button>
       <h1 class="topbar-title">${title}</h1>
     </div>
     <div class="topbar-right">
-      <span style="font-size:var(--fs-xs);color:var(--text-muted)">${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+      <span class="topbar-date" title="${fullDate}">${fullDate}</span>
     </div>
   `;
 

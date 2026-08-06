@@ -72,6 +72,16 @@ export function renderSidebar(container) {
     overlay.classList.remove('open');
   });
 
+  // Close sidebar on nav item click (mobile)
+  sidebar.querySelectorAll('.nav-item').forEach(link => {
+    link.addEventListener('click', () => {
+      if (window.innerWidth <= 1024) {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('open');
+      }
+    });
+  });
+
   // Logout
   sidebar.querySelector('#logout-btn').addEventListener('click', async () => {
     await signOut();
@@ -108,3 +118,4 @@ export function toggleMobileSidebar() {
     overlay.classList.toggle('open');
   }
 }
+
