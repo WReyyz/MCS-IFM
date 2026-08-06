@@ -108,34 +108,49 @@ export async function bulkUpdateRows(table, ids, updates, pkField = 'id') {
 
 // ---- DASHBOARD AGGREGATIONS ----
 export async function getDashboardStats() {
-  const [equipRes, woRes, schedRes, profilesRes] = await Promise.all([
+  const [equipRes, woRes, pmRes, schedRes, profilesRes] = await Promise.all([
     supabase.from('equipment').select('idAset, kondisi'),
     supabase.from('work_orders').select('id, status, man_hours_estimated, man_hours_actual, opened_at, closed_at'),
+    supabase.from('preventive_maintenance').select('id, status, created_at, last_done'),
     supabase.from('technician_schedule').select('id, profile_id, status, schedule_date').eq('schedule_date', new Date().toISOString().split('T')[0]),
     supabase.from('profiles').select('id, role').eq('role', 'technician'),
   ]);
 
   const equipment = equipRes.data || [];
   const workOrders = woRes.data || [];
+  const pms = pmRes.data || [];
   const schedules = schedRes.data || [];
   const technicians = profilesRes.data || [];
+
+  // Map PMs to WO structure
+  const mappedPms = pms.map(pm => ({
+    id: pm.id,
+    status: pm.status === 'completed' ? 'closed' : 'open',
+    opened_at: pm.created_at,
+    closed_at: pm.last_done ? new Date(pm.last_done).toISOString() : null,
+    man_hours_estimated: 0,
+    man_hours_actual: 0
+  }));
+
+  const allWorkOrders = [...workOrders, ...mappedPms];
 
   const now = new Date();
   const thisMonth = now.getMonth();
   const thisYear = now.getFullYear();
-  const woThisMonth = workOrders.filter(wo => {
+  const woThisMonth = allWorkOrders.filter(wo => {
+    if (!wo.opened_at) return false;
     const d = new Date(wo.opened_at);
     return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
   });
 
   const totalEquipment = equipment.length;
   const activeEquipment = equipment.filter(e => e.kondisi === 'operational').length;
-  const woOpen = workOrders.filter(wo => wo.status !== 'closed').length;
+  const woOpen = allWorkOrders.filter(wo => wo.status !== 'closed').length;
   const woClosed = woThisMonth.filter(wo => wo.status === 'closed').length;
   const woOpenMonth = woThisMonth.filter(wo => wo.status !== 'closed').length;
 
-  const totalEstimated = workOrders.reduce((s, wo) => s + (parseFloat(wo.man_hours_estimated) || 0), 0);
-  const totalActual = workOrders.reduce((s, wo) => s + (parseFloat(wo.man_hours_actual) || 0), 0);
+  const totalEstimated = allWorkOrders.reduce((s, wo) => s + (parseFloat(wo.man_hours_estimated) || 0), 0);
+  const totalActual = allWorkOrders.reduce((s, wo) => s + (parseFloat(wo.man_hours_actual) || 0), 0);
   const manHoursEffectiveness = totalEstimated > 0 ? Math.round((totalActual / totalEstimated) * 100) : 0;
 
   const onDuty = schedules.filter(s => s.status === 'on_duty').length;
@@ -163,29 +178,59 @@ export async function getDashboardStats() {
 }
 
 export async function getWoMonthlyTrend() {
-  const { data } = await supabase.from('work_orders').select('status, opened_at, closed_at');
+  const [woRes, pmRes] = await Promise.all([
+    supabase.from('work_orders').select('status, opened_at, closed_at'),
+    supabase.from('preventive_maintenance').select('status, created_at, last_done')
+  ]);
+
+  const wos = woRes.data || [];
+  const pms = pmRes.data || [];
+
+  const mappedPms = pms.map(pm => ({
+    status: pm.status === 'completed' ? 'closed' : 'open',
+    opened_at: pm.created_at,
+    closed_at: pm.last_done ? new Date(pm.last_done).toISOString() : null
+  }));
+
+  const allWos = [...wos, ...mappedPms];
+
   const months = [];
   const now = new Date();
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const m = d.getMonth();
     const y = d.getFullYear();
-    const wos = (data || []).filter(wo => {
+    const monthWos = allWos.filter(wo => {
+      if (!wo.opened_at) return false;
       const od = new Date(wo.opened_at);
       return od.getMonth() === m && od.getFullYear() === y;
     });
     months.push({
       label: d.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' }),
-      open: wos.filter(w => w.status !== 'closed').length,
-      closed: wos.filter(w => w.status === 'closed').length,
+      open: monthWos.filter(w => w.status !== 'closed').length,
+      closed: monthWos.filter(w => w.status === 'closed').length,
     });
   }
   return months;
 }
 
 export async function getWoDailyStats() {
-  const { data } = await supabase.from('work_orders').select('status, opened_at, closed_at');
-  const wos = data || [];
+  const [woRes, pmRes] = await Promise.all([
+    supabase.from('work_orders').select('status, opened_at, closed_at'),
+    supabase.from('preventive_maintenance').select('status, created_at, last_done')
+  ]);
+
+  const wos = woRes.data || [];
+  const pms = pmRes.data || [];
+
+  const mappedPms = pms.map(pm => ({
+    status: pm.status === 'completed' ? 'closed' : 'open',
+    opened_at: pm.created_at,
+    closed_at: pm.last_done ? new Date(pm.last_done).toISOString() : null
+  }));
+
+  const allWos = [...wos, ...mappedPms];
+
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -195,23 +240,23 @@ export async function getWoDailyStats() {
   const days = [];
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const dayDate = new Date(year, month, d);
 
-    // WOs opened on or before this day that are still relevant
-    const relevantWOs = wos.filter(wo => {
+    // WOs opened on this day
+    const relevantWOs = allWos.filter(wo => {
+      if (!wo.opened_at) return false;
       const opened = new Date(wo.opened_at);
       return opened.toISOString().split('T')[0] === dateStr;
     });
 
     // WOs closed on this day
-    const closedOnDay = wos.filter(wo => {
+    const closedOnDay = allWos.filter(wo => {
       if (!wo.closed_at) return false;
       return new Date(wo.closed_at).toISOString().split('T')[0] === dateStr;
     });
 
     const openCount = relevantWOs.filter(wo => wo.status === 'open' || wo.status === 'in_progress').length;
     const holdCount = relevantWOs.filter(wo => wo.status === 'hold').length;
-    const closedCount = closedOnDay.length || relevantWOs.filter(wo => wo.status === 'closed').length;
+    const closedCount = closedOnDay.length; // Count actual closures on this day
     const totalPlanned = relevantWOs.length;
 
     days.push({
