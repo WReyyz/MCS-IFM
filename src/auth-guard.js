@@ -1,9 +1,11 @@
-import { getCurrentUser } from './lib/supabase.js';
+import { getCurrentUser, getCurrentProfile } from './lib/supabase.js';
 
 const PUBLIC_ROUTES = ['/login'];
+const ADMIN_ROUTES  = ['/user-controller'];
 
 /**
- * Auth guard: redirects to /login if not authenticated
+ * Auth guard: redirects to /login if not authenticated.
+ * Redirects to / if non-admin tries to access admin-only routes.
  */
 export async function authGuard(path) {
   const user = await getCurrentUser();
@@ -16,6 +18,15 @@ export async function authGuard(path) {
   if (user && path === '/login') {
     window.location.hash = '/';
     return false;
+  }
+
+  // Admin-only route guard
+  if (user && ADMIN_ROUTES.includes(path)) {
+    const profile = await getCurrentProfile();
+    if (profile?.role !== 'admin') {
+      window.location.hash = '/';
+      return false;
+    }
   }
 
   return true;
