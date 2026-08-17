@@ -2,12 +2,15 @@ import { renderAppShell } from '../components/app-shell.js';
 import { icons } from '../components/icons.js';
 import { showModal, showConfirm } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
-import { fetchAll, insertRow, updateRow, deleteRow, bulkUpdateRows } from '../lib/supabase.js';
-import { EQUIPMENT_STATUS, EQUIPMENT_CATEGORIES } from '../utils/constants.js';
+import { fetchAll, insertRow, updateRow, deleteRow, bulkUpdateRows, supabase } from '../lib/supabase.js';
+import { EQUIPMENT_STATUS, EQUIPMENT_CATEGORIES, INTERVAL_TYPES } from '../utils/constants.js';
 import { formatDate, debounce, escapeHtml, badge, setupBulkSelection } from '../utils/helpers.js';
+
+let technicianList = []; // cached for requirement PIC dropdown
 
 let allEquipment = [];
 let selectedEquipmentIds = [];
+let requirementCountsMap = {}; // { equipmentId: count }
 
 export async function renderEquipment() {
   const content = renderAppShell('Daftar Equipment');
@@ -101,10 +104,20 @@ function updateBulkBar() {
 
 async function loadEquipment() {
   try {
-    allEquipment = await fetchAll('equipment', { order: { column: 'created_at', ascending: false } });
+    [allEquipment, technicianList] = await Promise.all([
+      fetchAll('equipment', { order: { column: 'created_at', ascending: false } }),
+      fetchAll('profiles', { filters: [{ column: 'role', value: 'technician' }], order: { column: 'full_name', ascending: true } }),
+    ]);
+    // Load requirement counts
+    const reqs = await fetchAll('equipment_maintenance_requirements', { select: 'equipment_id' });
+    requirementCountsMap = {};
+    reqs.forEach(r => {
+      requirementCountsMap[r.equipment_id] = (requirementCountsMap[r.equipment_id] || 0) + 1;
+    });
     filterAndRender();
   } catch (err) {
     showToast('Gagal memuat data equipment', 'error');
+    console.error(err);
   }
 }
 
@@ -138,26 +151,38 @@ function renderTable(data) {
       <table class="data-table">
         <thead><tr>
           <th class="col-checkbox"><input type="checkbox" class="form-checkbox" id="select-all" /></th>
-          <th>ID Asset</th><th>No Inventory</th><th>Nama</th><th>Kategori</th><th>Area</th><th>Kondisi</th><th>Aksi</th>
+          <th>ID SISTEM</th><th>NAMA EQUIPMENT</th><th>AREA</th><th>KATEGORI</th><th>NO INVENTORY</th><th>MANUFACTURE/VENDOR</th><th>TYPE</th><th>REQUIREMENTS</th><th>QR CODE</th><th>AKSI</th>
         </tr></thead>
         <tbody>
-          ${data.map(e => `
+          ${data.map(e => {
+            const reqCount = requirementCountsMap[e.idAset] || 0;
+            return `
             <tr>
               <td class="col-checkbox"><input type="checkbox" class="form-checkbox row-checkbox" value="${e.idAset}" ${selectedEquipmentIds.includes(e.idAset) ? 'checked' : ''} /></td>
               <td><span class="equipment-code">${escapeHtml(e.idAset)}</span></td>
-              <td>${escapeHtml(e.noInventory || '-')}</td>
-              <td>${escapeHtml(e.namaEquipment)}</td>
-              <td>${escapeHtml(e.kategori || '-')}</td>
+              <td style="font-weight: 600;">${escapeHtml(e.namaEquipment)}</td>
               <td>${escapeHtml(e.area || '-')}</td>
-              <td>${badge(EQUIPMENT_STATUS[e.kondisi]?.label || e.kondisi, EQUIPMENT_STATUS[e.kondisi]?.color, EQUIPMENT_STATUS[e.kondisi]?.bg)}</td>
+              <td>${escapeHtml(e.kategori || '-')}</td>
+              <td>${escapeHtml(e.noInventory || '-')}</td>
+              <td>${escapeHtml(e.manuf || '-')}</td>
+              <td>${escapeHtml(e.type || '-')}</td>
+              <td>
+                ${reqCount > 0
+                  ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(23,59,99,0.12);color:var(--primary);border-radius:999px;padding:2px 10px;font-size:var(--fs-xs);font-weight:var(--fw-semibold)">${reqCount} req</span>`
+                  : `<span style="color:var(--text-muted);font-size:var(--fs-xs)">—</span>`}
+              </td>
+              <td>
+                <button class="btn btn-ghost btn-icon btn-sm" data-qr="${e.idAset}" title="Show QR Code">${icons.qrCode}</button>
+              </td>
               <td>
                 <div class="table-actions">
-                  <button class="btn btn-ghost btn-icon btn-sm" data-edit="${e.idAset}" title="Edit">${icons.edit}</button>
-                  <button class="btn btn-ghost btn-icon btn-sm" data-delete="${e.idAset}" title="Hapus">${icons.trash}</button>
+                  <button class="btn btn-ghost btn-sm" data-history="${e.idAset}" style="font-size: 0.8rem; display: flex; align-items: center; gap: 4px;" title="History">${icons.clock} HISTORY</button>
+                  <button class="btn btn-ghost btn-icon btn-sm" data-edit="${e.idAset}" title="Edit" style="color: var(--warning);">${icons.edit}</button>
+                  <button class="btn btn-ghost btn-icon btn-sm" data-delete="${e.idAset}" title="Hapus" style="color: var(--danger);">${icons.trash}</button>
                 </div>
               </td>
             </tr>
-          `).join('')}
+          `}).join('')}
         </tbody>
       </table>
     </div>
@@ -174,6 +199,14 @@ function renderTable(data) {
       const equip = allEquipment.find(e => e.idAset === btn.dataset.edit);
       if (equip) showEquipmentForm(equip);
     });
+  });
+
+  wrapper.querySelectorAll('[data-qr]').forEach(btn => {
+    btn.addEventListener('click', () => showQRCode(btn.dataset.qr));
+  });
+
+  wrapper.querySelectorAll('[data-history]').forEach(btn => {
+    btn.addEventListener('click', () => showHistory(btn.dataset.history));
   });
 
   wrapper.querySelectorAll('[data-delete]').forEach(btn => {
@@ -198,8 +231,20 @@ function renderTable(data) {
   });
 }
 
-function showEquipmentForm(existing = null) {
+async function showEquipmentForm(existing = null) {
   const isEdit = !!existing;
+
+  // Pre-load existing requirements if editing
+  let existingReqs = [];
+  if (isEdit) {
+    try {
+      existingReqs = await fetchAll('equipment_maintenance_requirements', {
+        filters: [{ column: 'equipment_id', value: existing.idAset }],
+        order: { column: 'created_at', ascending: true }
+      });
+    } catch (e) { /* silently ignore, requirements are optional */ }
+  }
+
   showModal({
     title: isEdit ? 'Edit Equipment' : 'Tambah Equipment',
     size: 'modal-lg',
@@ -249,12 +294,148 @@ function showEquipmentForm(existing = null) {
           <input class="form-input" id="eq-model" value="${existing?.type || ''}" placeholder="Tipe" />
         </div>
       </div>
+
+      <hr style="margin: var(--sp-4) 0; border: none; border-top: 1px solid var(--border-color);" />
+      <h4 style="margin-bottom:var(--sp-1);display:flex;align-items:center;gap:8px;">
+        ${icons.clipboardList} Maintenance Requirements
+        <span style="font-size:var(--fs-xs);color:var(--text-muted);font-weight:normal">Kebutuhan jam per siklus pemeliharaan — sumber Load Man Hours</span>
+      </h4>
+      <div id="req-container" style="margin-bottom: var(--sp-2);"></div>
+      <button class="btn btn-secondary btn-sm" id="btn-add-req">${icons.plus} Tambah Requirement</button>
+
+      <hr style="margin: var(--sp-4) 0; border: none; border-top: 1px solid var(--border-color);" />
+      <h4 style="margin-bottom: var(--sp-2);">Checklist Tasks</h4>
+      <div id="checklist-container" style="margin-bottom: var(--sp-2);"></div>
+      <button class="btn btn-secondary btn-sm" id="btn-add-checklist" style="margin-bottom: var(--sp-2);">${icons.plus} Tambah Task</button>
     `,
     footer: `
       <button class="btn btn-secondary" id="eq-cancel">Batal</button>
       <button class="btn btn-primary" id="eq-save">${isEdit ? 'Simpan Perubahan' : 'Tambah Equipment'}</button>
     `,
     onMount: (overlay, close) => {
+      // ── Maintenance Requirements ─────────────────────────
+      let reqItems = existingReqs.map(r => ({ ...r }));
+      const reqContainer = overlay.querySelector('#req-container');
+
+      const techOptions = technicianList.map(t => `<option value="${t.id}">${escapeHtml(t.full_name)}</option>`).join('');
+
+      const renderReqs = () => {
+        if (reqItems.length === 0) {
+          reqContainer.innerHTML = '<div style="color:var(--text-muted);font-size:var(--fs-sm);padding:var(--sp-2) 0">Belum ada requirement. Tambahkan untuk mengaktifkan kalkulasi Load Man Hours otomatis.</div>';
+          return;
+        }
+        reqContainer.innerHTML = reqItems.map((r, idx) => `
+          <div class="form-row" style="align-items:flex-end;gap:8px;margin-bottom:8px;padding:var(--sp-3);background:var(--bg-base);border-radius:var(--radius-md);border:1px solid var(--border-color);">
+            <div class="form-group" style="flex:1;min-width:110px;">
+              <label class="form-label">Interval</label>
+              <select class="form-select" data-req-idx="${idx}" data-req-field="interval_type">
+                ${Object.entries(INTERVAL_TYPES).map(([k, v]) => `<option value="${k}" ${r.interval_type === k ? 'selected' : ''}>${v.label}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group req-custom-days" style="flex:0 0 90px;${r.interval_type !== 'custom' ? 'display:none' : ''}">
+              <label class="form-label">Setiap (hari)</label>
+              <input type="number" class="form-input" data-req-idx="${idx}" data-req-field="interval_days" value="${r.interval_days || ''}" placeholder="30" min="1" />
+            </div>
+            <div class="form-group" style="flex:0 0 100px;">
+              <label class="form-label">Man Hours</label>
+              <input type="number" class="form-input" data-req-idx="${idx}" data-req-field="man_hours" value="${r.man_hours || ''}" placeholder="jam" min="0" step="0.5" />
+            </div>
+
+            <button class="btn btn-ghost btn-icon btn-sm btn-del-req" data-req-idx="${idx}" style="color:var(--danger);margin-bottom:2px">${icons.trash}</button>
+          </div>
+        `).join('');
+
+
+
+        // Bind change listeners
+        reqContainer.querySelectorAll('[data-req-idx]').forEach(el => {
+          el.addEventListener('change', e => {
+            const idx = parseInt(e.target.dataset.reqIdx);
+            const field = e.target.dataset.reqField;
+            reqItems[idx][field] = e.target.value;
+            if (field === 'interval_type') {
+              const row = e.target.closest('.form-row');
+              const customGroup = row?.querySelector('.req-custom-days');
+              if (customGroup) customGroup.style.display = e.target.value === 'custom' ? '' : 'none';
+            }
+          });
+          el.addEventListener('input', e => {
+            const idx = parseInt(e.target.dataset.reqIdx);
+            const field = e.target.dataset.reqField;
+            if (field && field !== 'interval_type' && field !== 'assigned_to') {
+              reqItems[idx][field] = e.target.value;
+            }
+          });
+        });
+
+        reqContainer.querySelectorAll('.btn-del-req').forEach(btn => {
+          btn.addEventListener('click', e => {
+            const idx = parseInt(e.currentTarget.dataset.reqIdx);
+            reqItems.splice(idx, 1);
+            renderReqs();
+          });
+        });
+      };
+
+      renderReqs();
+
+      overlay.querySelector('#btn-add-req').addEventListener('click', () => {
+        reqItems.push({ interval_type: 'monthly', interval_days: null, man_hours: 0, assigned_to: '', description: '' });
+        renderReqs();
+      });
+
+      // ── Checklist ─────────────────────────────────────────
+      let checklistItems = Array.isArray(existing?.checklist) ? [...existing.checklist] : [];
+      const checklistContainer = overlay.querySelector('#checklist-container');
+      
+      const renderChecklist = () => {
+        if (checklistItems.length === 0) {
+          checklistContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem;">Belum ada task.</div>';
+          return;
+        }
+        checklistContainer.innerHTML = checklistItems.map((item, index) => `
+          <div class="form-row" style="align-items: center; gap: 8px; margin-bottom: 8px;">
+            <input type="text" class="form-input" value="${escapeHtml(item.task || '')}" data-index="${index}" data-field="task" style="flex:2" placeholder="Nama Task" />
+            <select class="form-select" data-index="${index}" data-field="type" style="flex:1">
+              <option value="boolean" ${item.type === 'boolean' ? 'selected' : ''}>Ya/Tidak</option>
+              <option value="number" ${item.type === 'number' ? 'selected' : ''}>Input Angka</option>
+              <option value="image" ${item.type === 'image' ? 'selected' : ''}>Upload Foto</option>
+            </select>
+            <button class="btn btn-ghost btn-icon btn-sm btn-del-task" data-index="${index}" style="color:var(--danger)">${icons.trash}</button>
+          </div>
+        `).join('');
+        
+        checklistContainer.querySelectorAll('input, select').forEach(el => {
+          el.addEventListener('change', (e) => {
+            const idx = e.target.dataset.index;
+            const field = e.target.dataset.field;
+            checklistItems[idx][field] = e.target.value;
+          });
+          el.addEventListener('input', (e) => {
+            if (e.target.tagName === 'INPUT') {
+              const idx = e.target.dataset.index;
+              const field = e.target.dataset.field;
+              checklistItems[idx][field] = e.target.value;
+            }
+          });
+        });
+        
+        checklistContainer.querySelectorAll('.btn-del-task').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const idx = e.currentTarget.dataset.index;
+            checklistItems.splice(idx, 1);
+            renderChecklist();
+          });
+        });
+      };
+      
+      renderChecklist();
+      
+      overlay.querySelector('#btn-add-checklist').addEventListener('click', () => {
+        checklistItems.push({ task: '', type: 'boolean' });
+        renderChecklist();
+      });
+
       overlay.querySelector('#eq-cancel').addEventListener('click', close);
       overlay.querySelector('#eq-save').addEventListener('click', async () => {
         const idAset = overlay.querySelector('#eq-idasset').value.trim();
@@ -273,23 +454,148 @@ function showEquipmentForm(existing = null) {
           area: overlay.querySelector('#eq-location').value.trim(),
           kondisi: overlay.querySelector('#eq-status').value,
           manuf: overlay.querySelector('#eq-manufacturer').value.trim(),
-          type: overlay.querySelector('#eq-model').value.trim()
+          type: overlay.querySelector('#eq-model').value.trim(),
+          checklist: checklistItems.filter(c => c.task.trim() !== '')
         };
 
         try {
           if (isEdit) {
             await updateRow('equipment', idAset, data, 'idAset');
-            showToast('Equipment berhasil diperbarui', 'success');
           } else {
             await insertRow('equipment', data);
-            showToast('Equipment berhasil ditambahkan', 'success');
           }
+
+          // Upsert maintenance requirements: delete old, insert new
+          const validReqs = reqItems.filter(r => r.interval_type && parseFloat(r.man_hours) >= 0);
+          if (isEdit) {
+            // Delete all existing requirements for this equipment, then re-insert
+            const { error: delErr } = await supabase
+              .from('equipment_maintenance_requirements')
+              .delete()
+              .eq('equipment_id', idAset);
+            if (delErr) throw delErr;
+          }
+          if (validReqs.length > 0) {
+            const { error: insErr } = await supabase
+              .from('equipment_maintenance_requirements')
+              .insert(validReqs.map(r => ({
+                equipment_id: idAset,
+                interval_type: r.interval_type,
+                interval_days: r.interval_type === 'custom' ? (parseInt(r.interval_days) || null) : null,
+                man_hours: parseFloat(r.man_hours) || 0,
+                assigned_to: r.assigned_to || null,
+                description: r.description || '',
+              })));
+            if (insErr) throw insErr;
+          }
+
+          showToast(isEdit ? 'Equipment berhasil diperbarui' : 'Equipment berhasil ditambahkan', 'success');
           close();
           await loadEquipment();
         } catch (err) {
           showToast(err.message || 'Gagal menyimpan', 'error');
+          console.error(err);
         }
       });
     }
   });
+}
+
+function showQRCode(idAset) {
+  showModal({
+    title: 'QR Code Scanner',
+    body: `
+      <div style="text-align: center; padding: 16px 0;">
+        <p style="color: var(--success); font-weight: 600; margin-bottom: 24px;">${idAset}</p>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(idAset)}" alt="QR Code" style="border-radius: 8px; display: inline-block;" />
+      </div>
+    `,
+    footer: `<button class="btn btn-secondary" style="width: 100%; background: #1a2332; color: #fff; border-color: #1a2332;" id="btn-close-qr">TUTUP</button>`,
+    onMount: (overlay, close) => {
+      overlay.querySelector('#btn-close-qr').addEventListener('click', close);
+    }
+  });
+}
+
+async function showHistory(idAset) {
+  const equip = allEquipment.find(e => e.idAset === idAset);
+  if (!equip) return;
+  
+  try {
+    const wos = await fetchAll('work_orders', { filters: [{column: 'equipment_id', value: idAset}], select: '*, profiles:assigned_to(full_name)', order: { column: 'created_at', ascending: false } });
+    
+    const woSelesai = wos.filter(w => w.status === 'closed').length;
+    const totalDowntime = wos.reduce((acc, curr) => acc + (curr.man_hours_actual || 0), 0);
+    
+    showModal({
+      title: 'Asset Detail & History Timeline',
+      size: 'modal-lg',
+      body: `
+        <div style="margin-bottom: 24px;">
+          <p style="color: var(--success); font-weight: 600; margin-bottom: 16px;">ID ASET: ${equip.idAset} | ${equip.namaEquipment}</p>
+          <div style="display: flex; gap: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 16px; border-radius: 8px;">
+            <div style="flex: 1;">
+              <div style="font-size: 0.8rem; color: var(--text-secondary);">Pabrikan</div>
+              <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px;">${equip.manuf || '-'}</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 0.8rem; color: var(--text-secondary);">Tipe</div>
+              <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px;">${equip.type || '-'}</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 0.8rem; color: var(--text-secondary);">Area</div>
+              <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px;">${equip.area || '-'}</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 0.8rem; color: var(--text-secondary);">No Inventory</div>
+              <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px;">${equip.noInventory || '-'}</div>
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: 16px; margin-top: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 16px; border-radius: 8px; text-align: center;">
+             <div style="flex: 1;">
+              <div style="font-size: 0.8rem; color: var(--text-secondary);">WO SELESAI</div>
+              <div style="font-weight: 600; font-size: 1.2rem; color: var(--text-primary); margin-top: 4px;">${woSelesai}</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 0.8rem; color: var(--text-secondary);">DOWNTIME</div>
+              <div style="font-weight: 600; font-size: 1.2rem; color: var(--danger); margin-top: 4px;">${totalDowntime} Jam</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 0.8rem; color: var(--text-secondary);">BIAYA MAINT.</div>
+              <div style="font-weight: 600; font-size: 1.2rem; color: var(--success); margin-top: 4px;">IDR 0</div>
+            </div>
+          </div>
+        </div>
+        
+        <h4 style="margin-bottom: 12px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; color: var(--text-secondary);">${icons.activity} REKAMAN LOG KEJADIAN</h4>
+        <div class="table-container" style="max-height: 250px; overflow-y: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>TANGGAL</th>
+                <th>JENIS</th>
+                <th>CATATAN DESKRIPSI</th>
+                <th>TEKNISI</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${wos.length === 0 ? `<tr><td colspan="4" style="text-align:center;">Belum ada log kejadian</td></tr>` : 
+                wos.map(wo => `
+                  <tr>
+                    <td>${formatDate(wo.created_at)}</td>
+                    <td style="text-transform: capitalize;">${wo.type}</td>
+                    <td>${escapeHtml(wo.description)}</td>
+                    <td>${wo.profiles?.full_name || '-'}</td>
+                  </tr>
+                `).join('')
+              }
+            </tbody>
+          </table>
+        </div>
+      `
+    });
+  } catch (err) {
+    showToast('Gagal memuat history', 'error');
+  }
 }

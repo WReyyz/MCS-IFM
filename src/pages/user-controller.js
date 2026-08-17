@@ -3,7 +3,7 @@ import { icons } from '../components/icons.js';
 import { showModal, showConfirm } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
 import { fetchAll, updateRow, getCurrentProfile, supabase, signUp, bulkUpdateRows } from '../lib/supabase.js';
-import { ROLES } from '../utils/constants.js';
+import { ROLES, TECHNICIAN_SKILLS } from '../utils/constants.js';
 import { formatDate, escapeHtml, badge, setupBulkSelection } from '../utils/helpers.js';
 
 let allUsers = [];
@@ -121,10 +121,16 @@ function renderTable() {
       <table class="data-table">
         <thead><tr>
           <th class="col-checkbox"><input type="checkbox" class="form-checkbox" id="select-all" /></th>
-          <th>Pengguna</th><th>Departemen</th><th>Role</th><th>Telepon</th><th>Status</th><th>Terdaftar</th><th>Aksi</th>
+          <th>Pengguna</th><th>Departemen</th><th>Role</th><th>Skill</th><th>Telepon</th><th>Status</th><th>Terdaftar</th><th>Aksi</th>
         </tr></thead>
         <tbody>
-          ${allUsers.map(u => `
+          ${allUsers.map(u => {
+            const skillKey  = (u.skill || '').toUpperCase();
+            const skillInfo = TECHNICIAN_SKILLS[skillKey];
+            const skillBadge = skillInfo
+              ? `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:0.72rem;font-weight:700;background:${skillInfo.bg};color:${skillInfo.color}">${skillInfo.label}</span>`
+              : `<span style="color:var(--text-muted);font-size:var(--fs-xs)">—</span>`;
+            return `
             <tr>
               <td class="col-checkbox"><input type="checkbox" class="form-checkbox row-checkbox" value="${u.id}" ${selectedUserIds.includes(u.id) ? 'checked' : ''} /></td>
               <td>
@@ -138,6 +144,7 @@ function renderTable() {
               </td>
               <td>${escapeHtml(u.department || '-')}</td>
               <td>${badge(ROLES[u.role]?.label || u.role, ROLES[u.role]?.color, ROLES[u.role]?.bg)}</td>
+              <td>${skillBadge}</td>
               <td>${escapeHtml(u.phone || '-')}</td>
               <td>${u.is_active
                 ? badge('Aktif', '#10b981', 'rgba(16,185,129,0.15)')
@@ -152,8 +159,8 @@ function renderTable() {
                   </button>
                 </div>
               </td>
-            </tr>
-          `).join('')}
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>
     </div>
@@ -280,9 +287,18 @@ function showEditUserForm(user) {
           <input class="form-input" id="edit-user-dept" value="${user.department || ''}" />
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Telepon</label>
-        <input class="form-input" id="edit-user-phone" value="${user.phone || ''}" />
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Skill</label>
+          <select class="form-select" id="edit-user-skill">
+            <option value="">— Tidak Ada —</option>
+            ${Object.entries(TECHNICIAN_SKILLS).map(([k, v]) => `<option value="${k}" ${(user.skill || '').toUpperCase() === k ? 'selected' : ''}>${v.label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Telepon</label>
+          <input class="form-input" id="edit-user-phone" value="${user.phone || ''}" />
+        </div>
       </div>
     `,
     footer: `
@@ -293,10 +309,11 @@ function showEditUserForm(user) {
       overlay.querySelector('#edit-user-cancel').addEventListener('click', close);
       overlay.querySelector('#edit-user-save').addEventListener('click', async () => {
         const data = {
-          full_name: overlay.querySelector('#edit-user-name').value.trim(),
-          role: overlay.querySelector('#edit-user-role').value,
+          full_name:  overlay.querySelector('#edit-user-name').value.trim(),
+          role:       overlay.querySelector('#edit-user-role').value,
           department: overlay.querySelector('#edit-user-dept').value.trim(),
-          phone: overlay.querySelector('#edit-user-phone').value.trim(),
+          skill:      overlay.querySelector('#edit-user-skill').value,
+          phone:      overlay.querySelector('#edit-user-phone').value.trim(),
         };
 
         try {

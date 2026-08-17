@@ -12,6 +12,7 @@ import { renderWorkOrder } from './pages/work-order.js';
 import { renderMaterialStock } from './pages/material-stock.js';
 import { renderTechnician } from './pages/technician.js';
 import { renderUserController } from './pages/user-controller.js';
+import { renderPlan } from './pages/plan.js';
 
 // Setup routes
 router
@@ -23,6 +24,7 @@ router
   .on('/preventive-maintenance', renderPreventiveMaintenance)
   .on('/work-order', renderWorkOrder)
   .on('/material-stock', renderMaterialStock)
+  .on('/plan', renderPlan)
   .on('/technician', renderTechnician)
   .on('/user-controller', renderUserController)
   .on('/404', () => {

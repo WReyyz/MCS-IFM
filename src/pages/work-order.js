@@ -2,7 +2,7 @@ import { renderAppShell } from '../components/app-shell.js';
 import { icons } from '../components/icons.js';
 import { showModal, showConfirm } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
-import { fetchAll, insertRow, updateRow, deleteRow, bulkUpdateRows, getCurrentProfile } from '../lib/supabase.js';
+import { fetchAll, insertRow, updateRow, deleteRow, bulkUpdateRows, getCurrentProfile, fetchById } from '../lib/supabase.js';
 import { WO_STATUS, WO_PRIORITY, WO_CATEGORY } from '../utils/constants.js';
 import { formatDate, formatDateTime, debounce, escapeHtml, badge, generateWoNumber, setupBulkSelection } from '../utils/helpers.js';
 
@@ -180,7 +180,7 @@ function renderTable(data) {
       <table class="data-table">
         <thead><tr>
           ${isAdmin ? '<th class="col-checkbox"><input type="checkbox" class="form-checkbox" id="select-all" /></th>' : ''}
-          <th>No. WO</th><th>Kategori</th><th>Prioritas</th><th>Status</th><th>Teknisi</th><th>Man Hours</th><th>Evidence</th><th>Tanggal</th><th>Aksi</th>
+          <th>No. WO</th><th>Kategori</th><th>Prioritas</th><th>Status</th><th>Teknisi</th><th>Est. Jam</th><th>Aktual Jam</th><th>Evidence</th><th>Tanggal</th><th>Aksi</th>
         </tr></thead>
         <tbody>
           ${data.map(wo => {
@@ -193,7 +193,7 @@ function renderTable(data) {
               <td>${badge(WO_PRIORITY[wo.priority]?.label, WO_PRIORITY[wo.priority]?.color, WO_PRIORITY[wo.priority]?.bg)}</td>
               <td>${badge(WO_STATUS[wo.status]?.label, WO_STATUS[wo.status]?.color, WO_STATUS[wo.status]?.bg)}</td>
               <td>${wo.profiles?.full_name || '-'}</td>
-              <td><span class="wo-man-hours">${wo.man_hours_actual || 0} jam</span></td>
+              <td><span style="font-size:var(--fs-xs);color:var(--text-muted)">${wo.man_hours_estimated || 0}h est</span> <span class="wo-man-hours">${wo.man_hours_actual || 0}h aktual</span></td>
               <td>${wo.evidence_url ? `<img src="${wo.evidence_url}" style="width:36px;height:36px;border-radius:4px;cursor:pointer;object-fit:cover" class="wo-evidence-preview-trigger" data-img="${wo.id}" title="Klik untuk memperbesar" />` : '-'}</td>
               <td>${formatDate(wo.opened_at)}</td>
               <td>
@@ -203,7 +203,6 @@ function renderTable(data) {
                     <button class="btn btn-ghost btn-icon btn-sm" data-delete="${wo.id}" title="Hapus">${icons.trash}</button>
                   ` : ''}
                   ${!isAdmin && wo.status === 'open' ? `
-                    <button class="btn btn-ghost btn-icon btn-sm" data-hold="${wo.id}" title="Hold" style="color:#F59E0B">${icons.alertTriangle || icons.edit}</button>
                     <button class="btn btn-ghost btn-icon btn-sm" data-close="${wo.id}" title="Close WO" style="color:#10B981">${icons.check}</button>
                   ` : ''}
                   ${!isAdmin && wo.status === 'hold' ? `
@@ -332,6 +331,18 @@ function showWOForm(existing = null) {
           </select>
         </div>
       </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Estimasi Man Hours (Jam)</label>
+          <input type="number" class="form-input" id="wo-est-hours" value="${existing?.man_hours_estimated || ''}" placeholder="0" step="0.5" min="0" />
+        </div>
+        ${isEdit ? `
+        <div class="form-group">
+          <label class="form-label">Aktual Man Hours</label>
+          <input type="number" class="form-input" id="wo-act-hours" value="${existing?.man_hours_actual || ''}" placeholder="0" step="0.5" min="0" />
+        </div>
+        ` : '<div class="form-group"></div>'}
+      </div>
       ${isEdit ? `
       <div class="form-row">
         <div class="form-group">
@@ -340,10 +351,7 @@ function showWOForm(existing = null) {
             ${badge(WO_STATUS[existing.status]?.label, WO_STATUS[existing.status]?.color, WO_STATUS[existing.status]?.bg)}
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Aktual Man Hours</label>
-          <input type="number" class="form-input" id="wo-act-hours" value="${existing?.man_hours_actual || ''}" placeholder="0" step="0.5" min="0" />
-        </div>
+        <div class="form-group"></div>
       </div>
       ` : ''}
       ${!isEdit ? `
@@ -400,6 +408,7 @@ function showWOForm(existing = null) {
           assigned_to,
           description: overlay.querySelector('#wo-desc').value.trim(),
           notes: overlay.querySelector('#wo-notes').value.trim(),
+          man_hours_estimated: parseFloat(overlay.querySelector('#wo-est-hours').value) || 0,
         };
 
         // New WO: always open
@@ -431,7 +440,66 @@ function showWOForm(existing = null) {
 }
 
 // ---- TECHNICIAN: Close WO Form ----
-function showCloseForm(wo) {
+async function showCloseForm(wo) {
+  let equipment = null;
+  if (wo.equipment_id && wo.type === 'preventive') {
+    try {
+      equipment = await fetchById('equipment', wo.equipment_id, 'idAset');
+    } catch (e) {
+      console.error('Failed to fetch equipment checklist', e);
+    }
+  }
+
+  const checklist = equipment?.checklist || [];
+  
+  let checklistHtml = '';
+  if (wo.type === 'preventive' && checklist.length > 0) {
+    checklistHtml = `
+      <hr style="margin: var(--sp-4) 0; border: none; border-top: 1px solid var(--border-color);" />
+      <h4 style="margin-bottom: var(--sp-2);">Checklist Preventive</h4>
+      <div id="dynamic-checklist-container">
+        ${checklist.map((item) => {
+          let inputHtml = '';
+          if (item.type === 'boolean') {
+            inputHtml = `
+              <select class="form-select checklist-input" data-task="${escapeHtml(item.task)}" data-type="boolean" required>
+                <option value="">Pilih...</option>
+                <option value="Ya / OK">Ya / OK</option>
+                <option value="Tidak / Not OK">Tidak / Not OK</option>
+              </select>
+            `;
+          } else if (item.type === 'number') {
+            inputHtml = `<input type="number" class="form-input checklist-input" data-task="${escapeHtml(item.task)}" data-type="number" placeholder="Input Nilai..." required />`;
+          } else if (item.type === 'image') {
+            inputHtml = `
+              <input type="file" accept="image/*" class="form-input checklist-input-file" data-task="${escapeHtml(item.task)}" required />
+              <div class="checklist-img-preview" style="margin-top: 8px; display:none;">
+                <img src="" style="max-height: 100px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);" />
+              </div>
+            `;
+          }
+          return `
+            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 8px;">
+              <label class="form-label">${escapeHtml(item.task)} *</label>
+              ${inputHtml}
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <hr style="margin: var(--sp-4) 0; border: none; border-top: 1px solid var(--border-color);" />
+    `;
+  }
+
+  const defaultEvidenceHtml = wo.type === 'corrective' || checklist.length === 0 ? `
+      <div class="form-group">
+        <label class="form-label">Upload Foto Evidence (Maks 1MB) *</label>
+        <input type="file" class="form-input" id="close-evidence" accept="image/*" />
+        <div id="evidence-preview-container" style="margin-top:var(--sp-2); display:none; text-align:center;">
+          <img id="evidence-preview" src="" style="max-width:100%; max-height:180px; border-radius:var(--radius-md); object-fit:cover; border:1px solid var(--border-color);" />
+        </div>
+      </div>
+  ` : '';
+
   showModal({
     title: `Close Work Order - ${wo.wo_number}`,
     size: 'modal-md',
@@ -455,13 +523,10 @@ function showCloseForm(wo) {
           <input type="text" class="form-input" id="close-hours" readonly style="opacity:0.8; background: rgba(255,255,255,0.05);" value="0" />
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Upload Foto Evidence (Maks 1MB) *</label>
-        <input type="file" class="form-input" id="close-evidence" accept="image/*" />
-        <div id="evidence-preview-container" style="margin-top:var(--sp-2); display:none; text-align:center;">
-          <img id="evidence-preview" src="" style="max-width:100%; max-height:180px; border-radius:var(--radius-md); object-fit:cover; border:1px solid var(--border-color);" />
-        </div>
-      </div>
+
+      ${checklistHtml}
+      ${defaultEvidenceHtml}
+
       <div class="form-group">
         <label class="form-label">Catatan Penyelesaian</label>
         <textarea class="form-textarea" id="close-notes" placeholder="Catatan hasil pekerjaan...">${wo.notes || ''}</textarea>
@@ -475,6 +540,7 @@ function showCloseForm(wo) {
       const startInput = overlay.querySelector('#close-start');
       const finishInput = overlay.querySelector('#close-finish');
       const hoursInput = overlay.querySelector('#close-hours');
+      
       const evidenceInput = overlay.querySelector('#close-evidence');
       const previewContainer = overlay.querySelector('#evidence-preview-container');
       const previewImg = overlay.querySelector('#evidence-preview');
@@ -501,29 +567,58 @@ function showCloseForm(wo) {
       finishInput.addEventListener('change', calculateHours);
       calculateHours();
 
-      // Handle image upload and base64 conversion
-      evidenceInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          if (file.size > 1024 * 1024) {
-            showToast('Ukuran foto maksimal 1MB', 'warning');
-            evidenceInput.value = '';
+      if (evidenceInput) {
+        evidenceInput.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            if (file.size > 1024 * 1024) {
+              showToast('Ukuran foto maksimal 1MB', 'warning');
+              evidenceInput.value = '';
+              previewContainer.style.display = 'none';
+              evidenceBase64 = null;
+              return;
+            }
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              evidenceBase64 = event.target.result;
+              previewImg.src = evidenceBase64;
+              previewContainer.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+          } else {
             previewContainer.style.display = 'none';
             evidenceBase64 = null;
-            return;
           }
+        });
+      }
 
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            evidenceBase64 = event.target.result;
-            previewImg.src = evidenceBase64;
-            previewContainer.style.display = 'block';
-          };
-          reader.readAsDataURL(file);
-        } else {
-          previewContainer.style.display = 'none';
-          evidenceBase64 = null;
-        }
+      // Handle checklist image uploads (convert to base64)
+      const checklistFiles = overlay.querySelectorAll('.checklist-input-file');
+      const checklistBase64 = {};
+      checklistFiles.forEach(input => {
+        input.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            if (file.size > 1024 * 1024) {
+              showToast('Ukuran foto maksimal 1MB', 'warning');
+              input.value = '';
+              input.nextElementSibling.style.display = 'none';
+              checklistBase64[input.dataset.task] = null;
+              return;
+            }
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              checklistBase64[input.dataset.task] = event.target.result;
+              const previewDiv = input.nextElementSibling;
+              previewDiv.style.display = 'block';
+              previewDiv.querySelector('img').src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+          } else {
+            checklistBase64[input.dataset.task] = null;
+            input.nextElementSibling.style.display = 'none';
+          }
+        });
       });
 
       overlay.querySelector('#close-cancel').addEventListener('click', close);
@@ -533,10 +628,40 @@ function showCloseForm(wo) {
           showToast('Waktu selesai harus setelah waktu mulai', 'warning');
           return;
         }
-        if (!evidenceBase64) {
+
+        let checklistText = '';
+        if (wo.type === 'preventive' && checklist.length > 0) {
+          let allFilled = true;
+          checklistText += '\\n\\n--- HASIL CHECKLIST ---\\n';
+          
+          overlay.querySelectorAll('.checklist-input').forEach(input => {
+            const val = input.value;
+            if (!val) allFilled = false;
+            checklistText += `- ${input.dataset.task}: ${val}\\n`;
+          });
+          
+          checklistFiles.forEach(input => {
+            const val = checklistBase64[input.dataset.task];
+            if (!val) allFilled = false;
+            checklistText += `- ${input.dataset.task}: [Lampiran Foto Tersimpan]\\n`;
+          });
+          
+          if (!allFilled) {
+            showToast('Harap isi semua item checklist', 'warning');
+            return;
+          }
+        } else if (evidenceInput && !evidenceBase64) {
           showToast('Foto evidence wajib diunggah', 'warning');
           return;
         }
+
+        let mainEvidenceUrl = evidenceBase64;
+        if (!mainEvidenceUrl && checklistFiles.length > 0) {
+           const firstImgTask = checklistFiles[0].dataset.task;
+           mainEvidenceUrl = checklistBase64[firstImgTask] || null;
+        }
+        
+        const finalNotes = overlay.querySelector('#close-notes').value.trim() + checklistText;
 
         try {
           await updateRow('work_orders', wo.id, {
@@ -544,9 +669,47 @@ function showCloseForm(wo) {
             man_hours_actual: hours,
             started_at: new Date(startInput.value).toISOString(),
             closed_at: new Date(finishInput.value).toISOString(),
-            evidence_url: evidenceBase64,
-            notes: overlay.querySelector('#close-notes').value.trim(),
+            evidence_url: mainEvidenceUrl,
+            notes: finalNotes,
           });
+          
+          // Auto update PM if this WO is linked to one
+          if (wo.pm_id) {
+            try {
+              const pm = await fetchById('preventive_maintenance', wo.pm_id);
+              if (pm) {
+                const closedDateObj = new Date(finishInput.value);
+                const today = closedDateObj.toISOString().split('T')[0];
+                
+                const nextDate = new Date(closedDateObj);
+                nextDate.setDate(nextDate.getDate() + (pm.interval_days || 30));
+                const nextDueStr = nextDate.toISOString().split('T')[0];
+                
+                await updateRow('preventive_maintenance', pm.id, {
+                  status: 'scheduled',
+                  last_done: today,
+                  next_due: nextDueStr
+                });
+                
+                // Generate next WO
+                const newWoData = {
+                  wo_number: 'WO-' + Date.now().toString().slice(-6), // quick fallback
+                  equipment_id: pm.equipment_id,
+                  pm_id: pm.id,
+                  type: 'preventive',
+                  priority: 'medium',
+                  status: 'open',
+                  assigned_to: pm.assigned_to,
+                  description: `[PM] ${pm.title}`,
+                  opened_at: new Date(nextDueStr).toISOString()
+                };
+                await insertRow('work_orders', newWoData);
+              }
+            } catch (err) {
+              console.error('Failed to update PM schedule', err);
+            }
+          }
+          
           showToast('Work Order berhasil ditutup', 'success');
           close();
           await loadWOs();

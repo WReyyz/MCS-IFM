@@ -2,17 +2,18 @@ import { signOut, getCurrentProfile } from '../lib/supabase.js';
 import { ROLES } from '../utils/constants.js';
 import { icons } from './icons.js';
 
-const MENU_ITEMS = [
+const ALL_MENU_ITEMS = [
   { section: 'UTAMA' },
   { path: '/', label: 'Dashboard', icon: 'layoutDashboard' },
-  { path: '/equipment', label: 'Daftar Equipment', icon: 'cpu' },
+  { path: '/equipment', label: 'Daftar Equipment', icon: 'cpu', adminOnly: true },
   { section: 'PEMELIHARAAN' },
   { path: '/preventive-maintenance', label: 'Preventive Maintenance', icon: 'calendarCheck' },
   { path: '/work-order', label: 'Work Order', icon: 'clipboardList' },
   { path: '/material-stock', label: 'Stok Material', icon: 'package' },
-  { section: 'MANAJEMEN' },
-  { path: '/technician', label: 'Manajemen Teknisi', icon: 'users' },
-  { path: '/user-controller', label: 'Kontrol Pengguna', icon: 'shield' },
+  { path: '/plan', label: 'Plan', icon: 'ganttChart' },
+  { section: 'MANAJEMEN', adminOnly: true },
+  { path: '/technician', label: 'Jadwal & Teknisi', icon: 'calendarCheck', adminOnly: true },
+  { path: '/user-controller', label: 'Kontrol Pengguna', icon: 'shield', adminOnly: true },
 ];
 
 export function renderSidebar(container) {
@@ -30,19 +31,8 @@ export function renderSidebar(container) {
         <span class="sidebar-brand-tag">Maintenance Control System</span>
       </div>
     </div>
-    <nav class="sidebar-nav">
-      ${MENU_ITEMS.map(item => {
-        if (item.section) {
-          return `<div class="nav-section"><div class="nav-section-title">${item.section}</div></div>`;
-        }
-        const isActive = (item.path === '/' && (currentPath === '/' || currentPath === '/dashboard')) ||
-                         (item.path !== '/' && currentPath === item.path);
-        return `
-          <a href="#${item.path}" class="nav-item ${isActive ? 'active' : ''}" data-path="${item.path}">
-            ${icons[item.icon]}
-            <span>${item.label}</span>
-          </a>`;
-      }).join('')}
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <!-- loaded dynamically based on profile -->
     </nav>
     <div class="sidebar-footer">
       <div class="sidebar-user" id="sidebar-user">
@@ -72,14 +62,12 @@ export function renderSidebar(container) {
     overlay.classList.remove('open');
   });
 
-  // Close sidebar on nav item click (mobile)
-  sidebar.querySelectorAll('.nav-item').forEach(link => {
-    link.addEventListener('click', () => {
-      if (window.innerWidth <= 1024) {
-        sidebar.classList.remove('open');
-        overlay.classList.remove('open');
-      }
-    });
+  // Close sidebar on nav item click (mobile) using delegation
+  sidebar.addEventListener('click', (e) => {
+    if (e.target.closest('.nav-item') && window.innerWidth <= 1024) {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('open');
+    }
   });
 
   // Logout
@@ -97,6 +85,40 @@ export function renderSidebar(container) {
 async function loadSidebarProfile() {
   try {
     const profile = await getCurrentProfile();
+    const isAdmin = profile?.role === 'admin';
+    const currentPath = window.location.hash.slice(1) || '/';
+    
+    const nav = document.getElementById('sidebar-nav');
+    if (nav) {
+      let filteredItems = ALL_MENU_ITEMS.filter(item => !item.adminOnly || isAdmin);
+      
+      const finalItems = [];
+      for (let i = 0; i < filteredItems.length; i++) {
+        const item = filteredItems[i];
+        if (item.section) {
+          const nextItem = filteredItems[i + 1];
+          if (nextItem && !nextItem.section) {
+            finalItems.push(item);
+          }
+        } else {
+          finalItems.push(item);
+        }
+      }
+
+      nav.innerHTML = finalItems.map(item => {
+        if (item.section) {
+          return `<div class="nav-section"><div class="nav-section-title">${item.section}</div></div>`;
+        }
+        const isActive = (item.path === '/' && (currentPath === '/' || currentPath === '/dashboard')) ||
+                         (item.path !== '/' && currentPath === item.path);
+        return `
+          <a href="#${item.path}" class="nav-item ${isActive ? 'active' : ''}" data-path="${item.path}">
+            ${icons[item.icon]}
+            <span>${item.label}</span>
+          </a>`;
+      }).join('');
+    }
+
     if (profile) {
       const nameEl = document.getElementById('sidebar-user-name');
       const roleEl = document.getElementById('sidebar-user-role');
