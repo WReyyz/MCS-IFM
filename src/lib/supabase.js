@@ -108,31 +108,19 @@ export async function bulkUpdateRows(table, ids, updates, pkField = 'id') {
 
 // ---- DASHBOARD AGGREGATIONS ----
 export async function getDashboardStats() {
-  const [equipRes, woRes, pmRes, schedRes, profilesRes] = await Promise.all([
+  const [equipRes, woRes, schedRes, profilesRes] = await Promise.all([
     supabase.from('equipment').select('idAset, kondisi'),
     supabase.from('work_orders').select('id, status, man_hours_estimated, man_hours_actual, opened_at, closed_at'),
-    supabase.from('preventive_maintenance').select('id, status, created_at, last_done'),
     supabase.from('technician_schedule').select('id, profile_id, status, schedule_date').eq('schedule_date', new Date().toISOString().split('T')[0]),
     supabase.from('profiles').select('id, role').eq('role', 'technician'),
   ]);
 
   const equipment = equipRes.data || [];
   const workOrders = woRes.data || [];
-  const pms = pmRes.data || [];
   const schedules = schedRes.data || [];
   const technicians = profilesRes.data || [];
 
-  // Map PMs to WO structure
-  const mappedPms = pms.map(pm => ({
-    id: pm.id,
-    status: pm.status === 'completed' ? 'closed' : 'open',
-    opened_at: pm.created_at,
-    closed_at: pm.last_done ? new Date(pm.last_done).toISOString() : null,
-    man_hours_estimated: 0,
-    man_hours_actual: 0
-  }));
-
-  const allWorkOrders = [...workOrders, ...mappedPms];
+  const allWorkOrders = workOrders;
 
   const now = new Date();
   const thisMonth = now.getMonth();
@@ -178,21 +166,12 @@ export async function getDashboardStats() {
 }
 
 export async function getWoMonthlyTrend() {
-  const [woRes, pmRes] = await Promise.all([
-    supabase.from('work_orders').select('status, opened_at, closed_at'),
-    supabase.from('preventive_maintenance').select('status, created_at, last_done')
+  const [woRes] = await Promise.all([
+    supabase.from('work_orders').select('status, opened_at, closed_at')
   ]);
 
   const wos = woRes.data || [];
-  const pms = pmRes.data || [];
-
-  const mappedPms = pms.map(pm => ({
-    status: pm.status === 'completed' ? 'closed' : 'open',
-    opened_at: pm.created_at,
-    closed_at: pm.last_done ? new Date(pm.last_done).toISOString() : null
-  }));
-
-  const allWos = [...wos, ...mappedPms];
+  const allWos = wos;
 
   const months = [];
   const now = new Date();
@@ -215,21 +194,12 @@ export async function getWoMonthlyTrend() {
 }
 
 export async function getWoDailyStats() {
-  const [woRes, pmRes] = await Promise.all([
-    supabase.from('work_orders').select('status, opened_at, closed_at'),
-    supabase.from('preventive_maintenance').select('status, created_at, last_done')
+  const [woRes] = await Promise.all([
+    supabase.from('work_orders').select('status, opened_at, closed_at')
   ]);
 
   const wos = woRes.data || [];
-  const pms = pmRes.data || [];
-
-  const mappedPms = pms.map(pm => ({
-    status: pm.status === 'completed' ? 'closed' : 'open',
-    opened_at: pm.created_at,
-    closed_at: pm.last_done ? new Date(pm.last_done).toISOString() : null
-  }));
-
-  const allWos = [...wos, ...mappedPms];
+  const allWos = wos;
 
   const now = new Date();
   const year = now.getFullYear();
@@ -277,6 +247,74 @@ export async function resetPassword(email, newPassword) {
     user_email: email,
     new_password: newPassword
   });
+  if (error) throw error;
+  return data;
+}
+
+// ---- TECHNICIAN NOTIFICATIONS ----
+export async function getNotifications() {
+  const { data, error } = await supabase
+    .from('technician_notifications')
+    .select('*, profiles:created_by(full_name)')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function sendNotification(title, body) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Not authenticated');
+  const { data, error } = await supabase
+    .from('technician_notifications')
+    .insert({ title, body, created_by: user.id })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteNotification(id) {
+  const { error } = await supabase
+    .from('technician_notifications')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
+// ---- TECHNICIAN HISTORY ----
+export async function getTechWOHistory(profileId) {
+  const { data, error } = await supabase
+    .from('work_orders')
+    .select('*')
+    .eq('assigned_to', profileId)
+    .eq('status', 'closed')
+    .order('closed_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+// ---- PROFILE UPDATE ----
+export async function updateProfile(id, updates) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  // Invalidate cache
+  cachedProfile = null;
+  return data;
+}
+
+export async function updateUserEmail(newEmail) {
+  const { data, error } = await supabase.auth.updateUser({ email: newEmail });
+  if (error) throw error;
+  return data;
+}
+
+export async function updateUserPassword(newPassword) {
+  const { data, error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) throw error;
   return data;
 }

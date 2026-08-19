@@ -129,12 +129,13 @@ async function loadWOs() {
     // Build fetch options
     const woOptions = {
       select: '*, profiles:assigned_to(full_name)',
-      order: { column: 'created_at', ascending: false }
+      order: { column: 'created_at', ascending: false },
+      filters: [{ column: 'type', value: 'corrective' }] // Hanya tampilkan corrective di menu ini
     };
 
-    // Technician: only see WOs assigned to them
+    // Technician (fallback just in case they access this route)
     if (!isAdmin && currentProfile?.id) {
-      woOptions.filters = [{ column: 'assigned_to', value: currentProfile.id }];
+      woOptions.filters.push({ column: 'assigned_to', value: currentProfile.id });
     }
 
     [allWOs, technicianList] = await Promise.all([

@@ -14,6 +14,7 @@ const ALL_MENU_ITEMS = [
   { section: 'MANAJEMEN', adminOnly: true },
   { path: '/technician', label: 'Jadwal & Teknisi', icon: 'calendarCheck', adminOnly: true },
   { path: '/user-controller', label: 'Kontrol Pengguna', icon: 'shield', adminOnly: true },
+  { path: '/admin-broadcast', label: 'Broadcast Notifikasi', icon: 'broadcast', adminOnly: true },
 ];
 
 export function renderSidebar(container) {

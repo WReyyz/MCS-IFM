@@ -309,8 +309,13 @@
 }
 .toolbar .filter-group {
   display: flex;
-  gap: var(--sp-2);
+  align-items: center;
+  gap: var(--sp-4); /* Jarak antar dropdown */
   flex-wrap: wrap;
+}
+.toolbar .filter-group .form-select {
+  width: auto;
+  min-width: 160px;
 }
 
 /* ===== LOADING ===== */

@@ -85,10 +85,7 @@ export async function renderPreventiveMaintenance() {
               </select>
             </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Estimasi Jam Kerja (jam)</label>
-            <input type="number" class="form-input" id="form-est-hours" placeholder="Contoh: 4" step="0.5" min="0" />
-          </div>
+
           <button class="btn btn-primary" id="btn-save-schedule" style="width:100%; margin-top:16px; background:#4CAF50;">SIMPAN JADWAL</button>
         </div>
         ` : `
@@ -497,7 +494,7 @@ async function saveNewSchedule() {
     interval_days: freq,
     next_due: plotDate,
     assigned_to: assigned,
-    estimated_hours: parseFloat(document.getElementById('form-est-hours').value) || 0,
+    estimated_hours: equipmentList.find(e => e.idAset === equipId)?.estimated_hours || 0,
     status: 'scheduled',
     description: ''
   };
@@ -525,7 +522,6 @@ async function saveNewSchedule() {
     document.getElementById('form-equip').value = '';
     document.getElementById('form-next-due').value = '';
     document.getElementById('form-assigned').value = '';
-    document.getElementById('form-est-hours').value = '';
 
     await loadData();
   } catch (err) {
