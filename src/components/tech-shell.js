@@ -18,7 +18,8 @@ export async function renderTechShell(activeTab = 'wo-list') {
   try {
     currentProfile = await getCurrentProfile();
     const notifs = await getNotifications();
-    notifCount = notifs.length;
+    const readNotifs = JSON.parse(localStorage.getItem('readNotifs') || '[]');
+    notifCount = notifs.filter(n => !readNotifs.includes(n.id)).length;
   } catch (e) {
     console.error('Tech shell load error:', e);
   }

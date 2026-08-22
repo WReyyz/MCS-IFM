@@ -30,24 +30,24 @@ export async function renderWorkOrder() {
       <div class="page-header">
         <h2>Work Order</h2>
         <div class="page-header-actions">
-          ${isAdmin ? `<button class="btn btn-primary" id="add-wo-btn">${icons.plus} Buat Work Order</button>` : ''}
+          ${isAdmin ? `<button class="btn btn-primary d-flex align-items-center gap-2" id="add-wo-btn">${icons.plus} <span>Buat Work Order</span></button>` : ''}
         </div>
       </div>
       <div class="toolbar">
         <div class="search-box">
           ${icons.search}
-          <input type="text" class="form-input" id="wo-search" placeholder="Cari WO..." />
+          <input type="text" class="form-control form-control-sm" id="wo-search" placeholder="Cari WO..." />
         </div>
         <div class="filter-group">
-          <select class="form-select" id="filter-wo-status">
+          <select class="form-select form-select-sm" id="filter-wo-status" style="min-width:140px">
             <option value="">Semua Status</option>
             ${Object.entries(WO_STATUS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}
           </select>
-          <select class="form-select" id="filter-wo-priority">
+          <select class="form-select form-select-sm" id="filter-wo-priority" style="min-width:140px">
             <option value="">Semua Prioritas</option>
             ${Object.entries(WO_PRIORITY).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}
           </select>
-          <select class="form-select" id="filter-wo-category">
+          <select class="form-select form-select-sm" id="filter-wo-category" style="min-width:140px">
             <option value="">Semua Kategori</option>
             ${Object.entries(WO_CATEGORY).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}
           </select>
@@ -61,19 +61,20 @@ export async function renderWorkOrder() {
       ${isAdmin ? `
       <div class="bulk-action-bar" id="bulk-action-bar">
         <div class="bulk-selected-count">
-          <span class="badge" id="bulk-count-badge">0</span> item terpilih
+          <span class="badge bg-warning text-dark" id="bulk-count-badge">0</span> item terpilih
         </div>
         <div class="bulk-actions">
-          <select class="form-select form-select-sm" id="bulk-status-select" style="min-width: 150px; padding-top: 4px; padding-bottom: 4px;">
+          <select class="form-select form-select-sm" id="bulk-status-select" style="min-width:150px">
             <option value="">Ubah Status...</option>
             ${Object.entries(WO_STATUS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}
           </select>
-          <button class="btn btn-primary btn-sm" id="btn-bulk-update" style="padding: 4px 12px">Update</button>
+          <button class="btn btn-primary btn-sm" id="btn-bulk-update">Update</button>
         </div>
       </div>
       ` : ''}
     </div>
   `;
+
 
   if (isAdmin) {
     document.getElementById('add-wo-btn').addEventListener('click', () => showWOForm());
@@ -178,36 +179,38 @@ function renderTable(data) {
 
   wrapper.innerHTML = `
     <div class="table-container">
-      <table class="data-table">
-        <thead><tr>
-          ${isAdmin ? '<th class="col-checkbox"><input type="checkbox" class="form-checkbox" id="select-all" /></th>' : ''}
-          <th>No. WO</th><th>Kategori</th><th>Prioritas</th><th>Status</th><th>Teknisi</th><th>Est. Jam</th><th>Aktual Jam</th><th>Evidence</th><th>Tanggal</th><th>Aksi</th>
-        </tr></thead>
+      <table class="table table-hover table-bordered mb-0">
+        <thead>
+          <tr>
+            ${isAdmin ? '<th class="col-checkbox"><input type="checkbox" class="form-check-input" id="select-all" /></th>' : ''}
+            <th>No. WO</th><th>Kategori</th><th>Prioritas</th><th>Status</th><th>Teknisi</th><th>Jam</th><th>Evidence</th><th>Tanggal</th><th>Aksi</th>
+          </tr>
+        </thead>
         <tbody>
           ${data.map(wo => {
             const cat = WO_CATEGORY[wo.category] || WO_CATEGORY.OTHER;
             return `
             <tr>
-              ${isAdmin ? `<td class="col-checkbox"><input type="checkbox" class="form-checkbox row-checkbox" value="${wo.id}" ${selectedWOIds.includes(wo.id) ? 'checked' : ''} /></td>` : ''}
+              ${isAdmin ? `<td class="col-checkbox"><input type="checkbox" class="form-check-input row-checkbox" value="${wo.id}" ${selectedWOIds.includes(wo.id) ? 'checked' : ''} /></td>` : ''}
               <td><span class="wo-number">${escapeHtml(wo.wo_number)}</span></td>
               <td>${badge(cat.label, cat.color, cat.bg)}</td>
               <td>${badge(WO_PRIORITY[wo.priority]?.label, WO_PRIORITY[wo.priority]?.color, WO_PRIORITY[wo.priority]?.bg)}</td>
               <td>${badge(WO_STATUS[wo.status]?.label, WO_STATUS[wo.status]?.color, WO_STATUS[wo.status]?.bg)}</td>
               <td>${wo.profiles?.full_name || '-'}</td>
-              <td><span style="font-size:var(--fs-xs);color:var(--text-muted)">${wo.man_hours_estimated || 0}h est</span> <span class="wo-man-hours">${wo.man_hours_actual || 0}h aktual</span></td>
+              <td><small class="text-muted">${wo.man_hours_estimated || 0}h est</small> <span class="wo-man-hours">${wo.man_hours_actual || 0}h</span></td>
               <td>${wo.evidence_url ? `<img src="${wo.evidence_url}" style="width:36px;height:36px;border-radius:4px;cursor:pointer;object-fit:cover" class="wo-evidence-preview-trigger" data-img="${wo.id}" title="Klik untuk memperbesar" />` : '-'}</td>
               <td>${formatDate(wo.opened_at)}</td>
               <td>
                 <div class="table-actions">
                   ${isAdmin ? `
-                    <button class="btn btn-ghost btn-icon btn-sm" data-edit="${wo.id}" title="Edit">${icons.edit}</button>
-                    <button class="btn btn-ghost btn-icon btn-sm" data-delete="${wo.id}" title="Hapus">${icons.trash}</button>
+                    <button class="btn btn-outline-warning btn-sm btn-icon" data-edit="${wo.id}" title="Edit">${icons.edit}</button>
+                    <button class="btn btn-outline-danger btn-sm btn-icon" data-delete="${wo.id}" title="Hapus">${icons.trash}</button>
                   ` : ''}
                   ${!isAdmin && wo.status === 'open' ? `
-                    <button class="btn btn-ghost btn-icon btn-sm" data-close="${wo.id}" title="Close WO" style="color:#10B981">${icons.check}</button>
+                    <button class="btn btn-outline-success btn-sm btn-icon" data-close="${wo.id}" title="Close WO">${icons.check}</button>
                   ` : ''}
                   ${!isAdmin && wo.status === 'hold' ? `
-                    <button class="btn btn-ghost btn-icon btn-sm" data-close="${wo.id}" title="Close WO" style="color:#10B981">${icons.check}</button>
+                    <button class="btn btn-outline-success btn-sm btn-icon" data-close="${wo.id}" title="Close WO">${icons.check}</button>
                   ` : ''}
                 </div>
               </td>
@@ -305,26 +308,26 @@ function showWOForm(existing = null) {
     title: isEdit ? 'Edit Work Order' : 'Buat Work Order Baru',
     size: 'modal-lg',
     body: `
-      <div class="form-row">
-        <div class="form-group">
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
           <label class="form-label">No. WO</label>
-          <input class="form-input" id="wo-number" value="${existing?.wo_number || generateWoNumber()}" ${isEdit ? 'readonly style="opacity:0.6"' : ''} />
+          <input class="form-control" id="wo-number" value="${existing?.wo_number || generateWoNumber()}" ${isEdit ? 'readonly style="opacity:0.6"' : ''} />
         </div>
-        <div class="form-group">
+        <div class="col-md-6">
           <label class="form-label">Kategori *</label>
           <select class="form-select" id="wo-category">
             ${Object.entries(WO_CATEGORY).map(([k, v]) => `<option value="${k}" ${existing?.category === k ? 'selected' : ''}>${v.label}</option>`).join('')}
           </select>
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
           <label class="form-label">Prioritas</label>
           <select class="form-select" id="wo-priority">
             ${Object.entries(WO_PRIORITY).map(([k, v]) => `<option value="${k}" ${existing?.priority === k ? 'selected' : ''}>${v.label}</option>`).join('')}
           </select>
         </div>
-        <div class="form-group">
+        <div class="col-md-6">
           <label class="form-label">Ditugaskan Ke *</label>
           <select class="form-select" id="wo-assigned">
             <option value="">Pilih Teknisi</option>
@@ -332,57 +335,54 @@ function showWOForm(existing = null) {
           </select>
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
           <label class="form-label">Estimasi Man Hours (Jam)</label>
-          <input type="number" class="form-input" id="wo-est-hours" value="${existing?.man_hours_estimated || ''}" placeholder="0" step="0.5" min="0" />
+          <input type="number" class="form-control" id="wo-est-hours" value="${existing?.man_hours_estimated || ''}" placeholder="0" step="0.5" min="0" />
         </div>
         ${isEdit ? `
-        <div class="form-group">
+        <div class="col-md-6">
           <label class="form-label">Aktual Man Hours</label>
-          <input type="number" class="form-input" id="wo-act-hours" value="${existing?.man_hours_actual || ''}" placeholder="0" step="0.5" min="0" />
+          <input type="number" class="form-control" id="wo-act-hours" value="${existing?.man_hours_actual || ''}" placeholder="0" step="0.5" min="0" />
         </div>
-        ` : '<div class="form-group"></div>'}
+        ` : ''}
       </div>
       ${isEdit ? `
-      <div class="form-row">
-        <div class="form-group">
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
           <label class="form-label">Status</label>
-          <div style="padding: 8px 0;">
+          <div>
             ${badge(WO_STATUS[existing.status]?.label, WO_STATUS[existing.status]?.color, WO_STATUS[existing.status]?.bg)}
           </div>
         </div>
-        <div class="form-group"></div>
       </div>
       ` : ''}
       ${!isEdit ? `
-      <div class="form-row">
-        <div class="form-group">
-          <div style="font-size: 0.85rem; color: var(--text-muted);">
-            Status otomatis: <strong>Open</strong>
-          </div>
+      <div class="mb-3">
+        <div class="text-muted small">
+          Status otomatis: <strong>Open</strong>
         </div>
       </div>
       ` : ''}
-      <div class="form-group">
+      <div class="mb-3">
         <label class="form-label">Deskripsi</label>
-        <textarea class="form-textarea" id="wo-desc" placeholder="Detail pekerjaan...">${existing?.description || ''}</textarea>
+        <textarea class="form-control" id="wo-desc" placeholder="Detail pekerjaan...">${existing?.description || ''}</textarea>
       </div>
-      <div class="form-group">
+      <div class="mb-3">
         <label class="form-label">Catatan</label>
-        <textarea class="form-textarea" id="wo-notes" placeholder="Catatan tambahan...">${existing?.notes || ''}</textarea>
+        <textarea class="form-control" id="wo-notes" placeholder="Catatan tambahan...">${existing?.notes || ''}</textarea>
       </div>
       ${isEdit && existing?.evidence_url ? `
-      <div class="form-group">
+      <div class="mb-3">
         <label class="form-label">Evidence Foto</label>
-        <div style="margin-top:var(--sp-2);">
-          <img src="${existing.evidence_url}" style="max-width:100%; max-height:200px; border-radius:var(--radius-md); object-fit:cover; border:1px solid var(--border-color);" />
+        <div class="mt-2">
+          <img src="${existing.evidence_url}" class="img-fluid rounded border" style="max-height:200px; object-fit:cover;" />
         </div>
       </div>
       ` : ''}
     `,
     footer: `
-      <button class="btn btn-secondary" id="wo-cancel">Batal</button>
+      <button class="btn btn-outline-secondary" id="wo-cancel">Batal</button>
       <button class="btn btn-primary" id="wo-save">${isEdit ? 'Simpan Perubahan' : 'Buat WO'}</button>
     `,
     onMount: (overlay, close) => {
@@ -470,17 +470,17 @@ async function showCloseForm(wo) {
               </select>
             `;
           } else if (item.type === 'number') {
-            inputHtml = `<input type="number" class="form-input checklist-input" data-task="${escapeHtml(item.task)}" data-type="number" placeholder="Input Nilai..." required />`;
+            inputHtml = `<input type="number" class="form-control checklist-input" data-task="${escapeHtml(item.task)}" data-type="number" placeholder="Input Nilai..." required />`;
           } else if (item.type === 'image') {
             inputHtml = `
-              <input type="file" accept="image/*" class="form-input checklist-input-file" data-task="${escapeHtml(item.task)}" required />
-              <div class="checklist-img-preview" style="margin-top: 8px; display:none;">
-                <img src="" style="max-height: 100px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);" />
+              <input type="file" accept="image/*" class="form-control checklist-input-file" data-task="${escapeHtml(item.task)}" required />
+              <div class="checklist-img-preview mt-2" style="display:none;">
+                <img src="" class="img-fluid rounded border" style="max-height: 100px;" />
               </div>
             `;
           }
           return `
-            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 8px;">
+            <div class="mb-3 p-3 bg-light border rounded">
               <label class="form-label">${escapeHtml(item.task)} *</label>
               ${inputHtml}
             </div>
@@ -492,11 +492,11 @@ async function showCloseForm(wo) {
   }
 
   const defaultEvidenceHtml = wo.type === 'corrective' || checklist.length === 0 ? `
-      <div class="form-group">
+      <div class="mb-3">
         <label class="form-label">Upload Foto Evidence (Maks 1MB) *</label>
-        <input type="file" class="form-input" id="close-evidence" accept="image/*" />
-        <div id="evidence-preview-container" style="margin-top:var(--sp-2); display:none; text-align:center;">
-          <img id="evidence-preview" src="" style="max-width:100%; max-height:180px; border-radius:var(--radius-md); object-fit:cover; border:1px solid var(--border-color);" />
+        <input type="file" class="form-control" id="close-evidence" accept="image/*" />
+        <div id="evidence-preview-container" class="mt-2 text-center" style="display:none;">
+          <img id="evidence-preview" src="" class="img-fluid rounded border" style="max-height:180px; object-fit:cover;" />
         </div>
       </div>
   ` : '';
@@ -505,37 +505,37 @@ async function showCloseForm(wo) {
     title: `Close Work Order - ${wo.wo_number}`,
     size: 'modal-md',
     body: `
-      <p style="margin-bottom: var(--sp-4); color: var(--text-secondary);">
+      <p class="text-muted mb-4">
         Pastikan pekerjaan sudah selesai sebelum menutup WO ini.
       </p>
-      <div class="form-row">
-        <div class="form-group">
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
           <label class="form-label">Actual Start *</label>
-          <input type="datetime-local" class="form-input" id="close-start" value="${toDatetimeLocal(wo.started_at || wo.opened_at || new Date())}" />
+          <input type="datetime-local" class="form-control" id="close-start" value="${toDatetimeLocal(wo.started_at || wo.opened_at || new Date())}" />
         </div>
-        <div class="form-group">
+        <div class="col-md-6">
           <label class="form-label">Actual Finish *</label>
-          <input type="datetime-local" class="form-input" id="close-finish" value="${toDatetimeLocal(new Date())}" />
+          <input type="datetime-local" class="form-control" id="close-finish" value="${toDatetimeLocal(new Date())}" />
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
           <label class="form-label">Calculated Man Hours (Jam)</label>
-          <input type="text" class="form-input" id="close-hours" readonly style="opacity:0.8; background: rgba(255,255,255,0.05);" value="0" />
+          <input type="text" class="form-control bg-light" id="close-hours" readonly value="0" />
         </div>
       </div>
 
       ${checklistHtml}
       ${defaultEvidenceHtml}
 
-      <div class="form-group">
+      <div class="mb-3">
         <label class="form-label">Catatan Penyelesaian</label>
-        <textarea class="form-textarea" id="close-notes" placeholder="Catatan hasil pekerjaan...">${wo.notes || ''}</textarea>
+        <textarea class="form-control" id="close-notes" placeholder="Catatan hasil pekerjaan...">${wo.notes || ''}</textarea>
       </div>
     `,
     footer: `
-      <button class="btn btn-secondary" id="close-cancel">Batal</button>
-      <button class="btn btn-primary" id="close-confirm" style="background: var(--success);">Close WO</button>
+      <button class="btn btn-outline-secondary" id="close-cancel">Batal</button>
+      <button class="btn btn-success" id="close-confirm">Close WO</button>
     `,
     onMount: (overlay, close) => {
       const startInput = overlay.querySelector('#close-start');
@@ -727,17 +727,17 @@ function showHoldForm(wo) {
   showModal({
     title: `Hold Work Order - ${wo.wo_number}`,
     body: `
-      <p style="margin-bottom: var(--sp-4); color: var(--text-secondary);">
+      <p class="text-muted mb-4">
         Berikan alasan mengapa WO ini perlu di-hold (contoh: butuh material, area tidak bisa diakses, dll).
       </p>
-      <div class="form-group">
+      <div class="mb-3">
         <label class="form-label">Alasan Hold *</label>
-        <textarea class="form-textarea" id="hold-notes" placeholder="Jelaskan alasan hold..." required></textarea>
+        <textarea class="form-control" id="hold-notes" placeholder="Jelaskan alasan hold..." required></textarea>
       </div>
     `,
     footer: `
-      <button class="btn btn-secondary" id="hold-cancel">Batal</button>
-      <button class="btn btn-primary" id="hold-confirm" style="background: var(--warning); color: #000;">Hold WO</button>
+      <button class="btn btn-outline-secondary" id="hold-cancel">Batal</button>
+      <button class="btn btn-warning text-dark" id="hold-confirm">Hold WO</button>
     `,
     onMount: (overlay, close) => {
       overlay.querySelector('#hold-cancel').addEventListener('click', close);

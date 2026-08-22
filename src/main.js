@@ -42,11 +42,11 @@ router
   .on('/tech-profile', renderTechProfile)
   .on('/404', () => {
     document.getElementById('app').innerHTML = `
-      <div class="login-page">
-        <div class="login-card" style="text-align:center">
-          <h2 style="margin-bottom:var(--sp-4)">404</h2>
-          <p>Halaman tidak ditemukan</p>
-          <a href="#/" class="btn btn-primary" style="margin-top:var(--sp-4)">Kembali ke Dashboard</a>
+      <div class="d-flex align-items-center justify-content-center min-vh-100 bg-light">
+        <div class="card border-0 shadow-sm text-center p-5" style="max-width:400px; width:100%">
+          <h2 class="display-1 fw-bold text-primary mb-3">404</h2>
+          <p class="fs-5 text-muted mb-4">Halaman tidak ditemukan</p>
+          <a href="#/" class="btn btn-primary px-4 py-2">Kembali ke Dashboard</a>
         </div>
       </div>`;
   });

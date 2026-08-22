@@ -7,6 +7,32 @@ import { Chart, registerables } from 'chart.js';
 
 Chart.register(...registerables);
 
+// Industrial Patina — chart palette
+const CHART = {
+  open:    '#2D6A9F',   // cold blue
+  closed:  '#2E8B57',   // forest green
+  hold:    '#E8920A',   // safety amber
+  planned: '#1A2230',   // iron dark
+  grid:    'rgba(28,33,39,0.07)',
+  tick:    '#8A96A3',
+  tooltip: { bg: '#1C2127', border: 'rgba(255,255,255,0.10)', title: '#fff', body: 'rgba(255,255,255,0.75)' },
+};
+
+// Shared chart options
+const baseScaleOpts = {
+  x: { ticks: { color: CHART.tick, font: { size: 10, family: "'IBM Plex Mono', monospace" } }, grid: { color: CHART.grid } },
+  y: { ticks: { color: CHART.tick, font: { size: 10, family: "'IBM Plex Mono', monospace" } }, grid: { color: CHART.grid }, beginAtZero: true },
+};
+const baseTooltip = {
+  backgroundColor: CHART.tooltip.bg,
+  borderColor: CHART.tooltip.border,
+  borderWidth: 1,
+  titleColor: CHART.tooltip.title,
+  bodyColor: CHART.tooltip.body,
+  cornerRadius: 6,
+  padding: 10,
+};
+
 export async function renderDashboard() {
   const content = renderAppShell('Dashboard');
 
@@ -15,56 +41,126 @@ export async function renderDashboard() {
 
   content.innerHTML = `
     <div class="stagger">
-      <div class="dashboard-top-row stagger">
-        <div class="stat-card animate-fade-in-up" style="--stat-accent:linear-gradient(135deg,#0E2439,#173B63);flex:0 0 auto;min-width:200px">
-          <div class="stat-icon" style="background:rgba(14,36,57,0.1);color:#0E2439">${icons.hardDrive}</div>
-          <div class="stat-value" id="stat-equip">0</div>
-          <div class="stat-label">Total Inventory</div>
-          <div class="stat-sub" id="stat-equip-sub">-</div>
+
+      <!-- Fleet Pulse Bar: signature element, always first -->
+      <div class="fleet-pulse animate-fade-in-up" id="fleet-pulse-container">
+        <div class="fleet-pulse-header">
+          <span class="fleet-pulse-label">Fleet Status</span>
+          <span class="fleet-pulse-total" id="fleet-total">— unit</span>
         </div>
-        <div class="chart-card animate-fade-in-up" style="flex:1;min-width:0">
-          <div class="chart-card-header">
-            <h3 class="chart-card-title">Work Order Harian — ${monthLabel}</h3>
+        <div class="fleet-pulse-track" id="fleet-track">
+          <!-- segments rendered by JS -->
+        </div>
+        <div class="fleet-pulse-legend" id="fleet-legend">
+          <!-- legend rendered by JS -->
+        </div>
+      </div>
+
+      <!-- Stat Cards Row -->
+      <div class="stat-cards animate-fade-in-up">
+        <div class="stat-card" style="--stat-border-color:var(--mcs-info)">
+          <div class="stat-category">Total Equipment</div>
+          <div class="stat-value" id="stat-equip">—</div>
+          <div class="stat-label">Unit terdaftar</div>
+          <div class="stat-sub">
+            <span class="stat-sub-dot" style="background:var(--mcs-operational)"></span>
+            <span id="stat-equip-sub">memuat...</span>
           </div>
-          <div style="position:relative;height:220px">
-            <canvas id="chart-wo-daily"></canvas>
+        </div>
+        <div class="stat-card" style="--stat-border-color:var(--chart-open)">
+          <div class="stat-category">Work Order</div>
+          <div class="stat-value" id="stat-wo-open">—</div>
+          <div class="stat-label">WO masih berjalan</div>
+          <div class="stat-sub">
+            <span class="stat-sub-dot" style="background:var(--mcs-amber)"></span>
+            <span id="stat-wo-hold">memuat...</span>
+          </div>
+        </div>
+        <div class="stat-card" style="--stat-border-color:var(--mcs-breakdown)">
+          <div class="stat-category">Breakdown Aktif</div>
+          <div class="stat-value" id="stat-breakdown">—</div>
+          <div class="stat-label">Unit dalam kondisi rusak</div>
+          <div class="stat-sub">
+            <span class="stat-sub-dot" style="background:var(--mcs-maintenance)"></span>
+            <span id="stat-maintenance">memuat...</span>
+          </div>
+        </div>
+        <div class="stat-card" style="--stat-border-color:var(--mcs-maintenance)">
+          <div class="stat-category">PM Terjadwal</div>
+          <div class="stat-value" id="stat-pm">—</div>
+          <div class="stat-label">Preventive maintenance aktif</div>
+          <div class="stat-sub">
+            <span class="stat-sub-dot" style="background:var(--mcs-breakdown)"></span>
+            <span id="stat-pm-overdue">memuat...</span>
           </div>
         </div>
       </div>
 
+      <!-- Charts -->
       <div class="charts-grid">
         <div class="chart-card animate-fade-in-up">
           <div class="chart-card-header">
-            <h3 class="chart-card-title">Tren Work Order (6 Bulan)</h3>
+            <div>
+              <div class="chart-card-title">Tren Work Order — 6 Bulan</div>
+            </div>
           </div>
-          <canvas id="chart-wo-trend"></canvas>
+          <div style="position:relative;height:240px" id="chart-trend-wrapper">
+            <canvas id="chart-wo-trend"></canvas>
+          </div>
+          <div id="chart-trend-notice" style="display:none"></div>
         </div>
         <div class="chart-card animate-fade-in-up">
           <div class="chart-card-header">
-            <h3 class="chart-card-title">Status Equipment</h3>
+            <div>
+              <div class="chart-card-title">Status Fleet</div>
+            </div>
           </div>
-          <canvas id="chart-equip-status"></canvas>
+          <div class="donut-chart-wrapper" style="height:200px">
+            <canvas id="chart-equip-status"></canvas>
+          </div>
+          <div id="chart-status-notice" style="display:none"></div>
         </div>
       </div>
 
+      <!-- WO Harian (full-width, below main charts) -->
+      <div class="chart-card animate-fade-in-up mb-4">
+        <div class="chart-card-header">
+          <div>
+            <div class="chart-card-title">Work Order Harian — ${monthLabel}</div>
+            <div class="chart-card-subtitle">Open · Closed · Hold per hari</div>
+          </div>
+        </div>
+        <div style="position:relative;height:180px" id="chart-daily-wrapper">
+          <canvas id="chart-wo-daily"></canvas>
+        </div>
+        <div id="chart-daily-notice" style="display:none"></div>
+      </div>
+
+      <!-- Bottom: Recent WO + Upcoming PM -->
       <div class="dashboard-bottom">
         <div class="card animate-fade-in-up">
-          <div class="card-header">
-            <h3 class="card-title">Work Order Terbaru</h3>
-            <a href="#/work-order" class="btn btn-ghost btn-sm">Lihat Semua ${icons.chevronRight}</a>
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <h6 class="fw-semibold mb-0">Work Order Terbaru</h6>
+              <a href="#/work-order" class="btn btn-sm btn-outline-secondary">Lihat Semua ${icons.chevronRight}</a>
+            </div>
+            <div id="recent-wo-table"></div>
           </div>
-          <div id="recent-wo-table"></div>
         </div>
         <div class="card animate-fade-in-up">
-          <div class="card-header">
-            <h3 class="card-title">PM Mendatang</h3>
-            <a href="#/preventive-maintenance" class="btn btn-ghost btn-sm">Lihat Semua ${icons.chevronRight}</a>
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <h6 class="fw-semibold mb-0">PM Mendatang</h6>
+              <a href="#/preventive-maintenance" class="btn btn-sm btn-outline-secondary">Lihat Semua ${icons.chevronRight}</a>
+            </div>
+            <div id="upcoming-pm-list"></div>
           </div>
-          <div id="upcoming-pm-list"></div>
         </div>
       </div>
+
     </div>
   `;
+
 
   loadDashboardData();
 }
@@ -88,226 +184,396 @@ async function loadDashboardData() {
       }),
     ]);
 
-    // Animate Total Inventory stat
+    // ── Fleet Pulse Bar ──────────────────────────────────────────────────
+    renderFleetPulse(stats);
+
+    // ── Stat cards ───────────────────────────────────────────────────────
     animateCounter(document.getElementById('stat-equip'), stats.totalEquipment);
-    document.getElementById('stat-equip-sub').textContent = `${stats.activeEquipment} operasional`;
+    document.getElementById('stat-equip-sub').textContent =
+      `${stats.activeEquipment ?? stats.equipmentByStatus?.operational ?? '—'} operasional`;
 
-    // Daily WO Chart (combined: stacked bar for Open/Closed/Hold + line for Total Planned)
-    const dailyCtx = document.getElementById('chart-wo-daily');
-    if (dailyCtx) {
-      new Chart(dailyCtx, {
-        type: 'bar',
-        data: {
-          labels: dailyStats.map(d => d.label),
-          datasets: [
-            {
-              label: 'WO Closed',
-              data: dailyStats.map(d => d.closed),
-              backgroundColor: 'rgba(140,198,63,0.85)',
-              borderRadius: 3,
-              borderSkipped: false,
-              stack: 'stack1',
-              order: 2,
-            },
-            {
-              label: 'WO Open',
-              data: dailyStats.map(d => d.open),
-              backgroundColor: 'rgba(23,59,99,0.80)',
-              borderRadius: 3,
-              borderSkipped: false,
-              stack: 'stack1',
-              order: 2,
-            },
-            {
-              label: 'WO Hold',
-              data: dailyStats.map(d => d.hold),
-              backgroundColor: 'rgba(245,158,11,0.80)',
-              borderRadius: 3,
-              borderSkipped: false,
-              stack: 'stack1',
-              order: 2,
-            },
-            {
-              label: 'Total WO Terplan',
-              data: dailyStats.map(d => d.totalPlanned),
-              type: 'line',
-              borderColor: '#0E2439',
-              backgroundColor: 'rgba(14,36,57,0.08)',
-              borderWidth: 2.5,
-              pointRadius: 3,
-              pointBackgroundColor: '#0E2439',
-              pointBorderColor: '#0E2439',
-              tension: 0.3,
-              fill: true,
-              order: 1,
-            },
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: {
-            mode: 'index',
-            intersect: false,
-          },
-          plugins: {
-            legend: {
-              labels: {
-                color: '#6B7280',
-                font: { size: 11 },
-                usePointStyle: true,
-                pointStyle: 'rectRounded',
-                padding: 16,
-              }
-            },
-            tooltip: {
-              backgroundColor: 'rgba(14,36,57,0.95)',
-              borderColor: 'rgba(255,255,255,0.12)',
-              borderWidth: 1,
-              titleColor: '#FFFFFF',
-              bodyColor: 'rgba(255,255,255,0.8)',
-              cornerRadius: 8,
-              padding: 10,
-            }
-          },
-          scales: {
-            x: {
-              ticks: { color: '#6b7280', font: { size: 10 } },
-              grid: { color: 'rgba(14,36,57,0.07)' },
-              stacked: true,
-            },
-            y: {
-              ticks: { color: '#6b7280', stepSize: 1 },
-              grid: { color: 'rgba(14,36,57,0.07)' },
-              beginAtZero: true,
-              stacked: true,
-            }
-          }
-        }
-      });
-    }
+    const openWOs = recentWOs.filter(w => w.status === 'open').length;
+    const holdWOs = recentWOs.filter(w => w.status === 'hold').length;
+    animateCounter(document.getElementById('stat-wo-open'), stats.openWO ?? openWOs);
+    document.getElementById('stat-wo-hold').textContent =
+      `${stats.holdWO ?? holdWOs} WO ditahan`;
 
-    // WO Trend Chart (6 months)
-    const trendCtx = document.getElementById('chart-wo-trend');
-    if (trendCtx) {
-      new Chart(trendCtx, {
-        type: 'bar',
-        data: {
-          labels: trend.map(t => t.label),
-          datasets: [
-            {
-              label: 'Terbuka',
-              data: trend.map(t => t.open),
-              backgroundColor: 'rgba(23,59,99,0.80)',
-              borderRadius: 6,
-              borderSkipped: false,
-            },
-            {
-              label: 'Selesai',
-              data: trend.map(t => t.closed),
-              backgroundColor: 'rgba(140,198,63,0.85)',
-              borderRadius: 6,
-              borderSkipped: false,
-            },
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { labels: { color: '#6B7280', font: { size: 11 } } }
-          },
-          scales: {
-            x: { ticks: { color: '#6b7280' }, grid: { color: 'rgba(14,36,57,0.07)' } },
-            y: { ticks: { color: '#6b7280' }, grid: { color: 'rgba(14,36,57,0.07)' }, beginAtZero: true }
-          }
-        }
-      });
-    }
+    const breakdown = stats.equipmentByStatus?.breakdown ?? 0;
+    const maintenance = stats.equipmentByStatus?.maintenance ?? 0;
+    animateCounter(document.getElementById('stat-breakdown'), breakdown);
+    document.getElementById('stat-maintenance').textContent =
+      `${maintenance} dalam perawatan`;
 
-    // Equipment status chart
-    const statusCtx = document.getElementById('chart-equip-status');
-    if (statusCtx) {
-      new Chart(statusCtx, {
-        type: 'doughnut',
-        data: {
-          labels: Object.values(EQUIPMENT_STATUS).map(s => s.label),
-          datasets: [{
-            data: [
-              stats.equipmentByStatus.operational,
-              stats.equipmentByStatus.maintenance,
-              stats.equipmentByStatus.breakdown,
-              stats.equipmentByStatus.decommissioned,
-            ],
-            backgroundColor: Object.values(EQUIPMENT_STATUS).map(s => s.color),
-            borderWidth: 0,
-            spacing: 3,
-            borderRadius: 4,
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: '65%',
-          plugins: {
-            legend: { position: 'bottom', labels: { color: '#6B7280', padding: 12, font: { size: 11 } } }
-          }
-        }
-      });
-    }
+    const pmScheduled = upcomingPMs.length;
+    animateCounter(document.getElementById('stat-pm'), stats.scheduledPM ?? pmScheduled);
+    document.getElementById('stat-pm-overdue').textContent =
+      `${stats.overduePM ?? 0} terlambat`;
 
-    // Recent WOs table
-    const woContainer = document.getElementById('recent-wo-table');
-    if (woContainer) {
-      if (recentWOs.length === 0) {
-        woContainer.innerHTML = `<div class="empty-state"><p>Belum ada work order</p></div>`;
-      } else {
-        woContainer.innerHTML = `
-          <div class="table-container" style="border:none">
-            <table class="data-table">
-              <thead><tr>
-                <th>No. WO</th><th>Kategori</th><th>Status</th><th>Prioritas</th>
-              </tr></thead>
-              <tbody>
-                ${recentWOs.map(wo => {
-                  const cat = WO_CATEGORY[wo.category] || WO_CATEGORY.OTHER;
-                  return `
-                  <tr>
-                    <td><span class="wo-number">${wo.wo_number}</span></td>
-                    <td><span class="badge" style="color:${cat.color};background:${cat.bg}">${cat.label}</span></td>
-                    <td><span class="badge" style="color:${WO_STATUS[wo.status]?.color};background:${WO_STATUS[wo.status]?.bg}">${WO_STATUS[wo.status]?.label}</span></td>
-                    <td><span class="badge" style="color:${WO_PRIORITY[wo.priority]?.color};background:${WO_PRIORITY[wo.priority]?.bg}">${WO_PRIORITY[wo.priority]?.label}</span></td>
-                  </tr>
-                `}).join('')}
-              </tbody>
-            </table>
-          </div>`;
-      }
-    }
+    // ── WO Daily Chart ───────────────────────────────────────────────────
+    renderDailyChart(dailyStats);
 
-    // Upcoming PMs
-    const pmContainer = document.getElementById('upcoming-pm-list');
-    if (pmContainer) {
-      if (upcomingPMs.length === 0) {
-        pmContainer.innerHTML = `<div class="empty-state"><p>Tidak ada PM terjadwal</p></div>`;
-      } else {
-        pmContainer.innerHTML = upcomingPMs.map(pm => `
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--sp-3) 0;border-bottom:1px solid var(--border-color);gap:var(--sp-3)">
-            <div style="flex:1">
-              <div style="font-weight:var(--fw-medium);font-size:var(--fs-sm)">${pm.title}</div>
-              <div style="font-size:var(--fs-xs);color:var(--text-muted)">${pm.equipment?.namaEquipment || '-'}</div>
-            </div>
-            <div style="text-align:right">
-              <span class="badge" style="color:${isOverdue(pm.next_due) ? 'var(--danger)' : 'var(--info)'};background:${isOverdue(pm.next_due) ? 'var(--danger-bg)' : 'var(--info-bg)'}">
-                ${isOverdue(pm.next_due) ? 'Terlambat' : formatDate(pm.next_due)}
-              </span>
-            </div>
-          </div>
-        `).join('');
-      }
-    }
+    // ── WO Trend Chart ───────────────────────────────────────────────────
+    renderTrendChart(trend);
+
+    // ── Equipment Status Donut ───────────────────────────────────────────
+    renderStatusDonut(stats);
+
+    // ── Recent WOs ───────────────────────────────────────────────────────
+    renderRecentWOs(recentWOs);
+
+    // ── Upcoming PMs ─────────────────────────────────────────────────────
+    renderUpcomingPMs(upcomingPMs);
+
   } catch (err) {
     console.error('Dashboard error:', err);
   }
 }
 
+// ── Fleet Pulse Bar ──────────────────────────────────────────────────────────
+function renderFleetPulse(stats) {
+  const total = stats.totalEquipment || 0;
+  const byStatus = stats.equipmentByStatus || {};
+  const operational   = byStatus.operational    || 0;
+  const maintenance   = byStatus.maintenance    || 0;
+  const breakdown     = byStatus.breakdown      || 0;
+  const decommissioned = byStatus.decommissioned || 0;
+
+  document.getElementById('fleet-total').textContent = `${total} unit terdaftar`;
+
+  const track  = document.getElementById('fleet-track');
+  const legend = document.getElementById('fleet-legend');
+
+  if (total === 0) {
+    track.innerHTML = `<div style="flex:1;background:var(--graphite);border-radius:5px"></div>`;
+    legend.innerHTML = `<span class="fleet-legend-item" style="color:var(--text-muted)">Belum ada data equipment</span>`;
+    return;
+  }
+
+  const segments = [
+    { cls: 'seg-operational', count: operational,    label: 'Operasional',  dotColor: 'var(--status-operational)' },
+    { cls: 'seg-maintenance',  count: maintenance,    label: 'Perawatan',    dotColor: 'var(--status-maintenance)'  },
+    { cls: 'seg-breakdown',    count: breakdown,      label: 'Rusak',        dotColor: 'var(--status-breakdown)'    },
+    { cls: 'seg-inactive',     count: decommissioned, label: 'Non-Aktif',    dotColor: 'var(--status-inactive)'     },
+  ].filter(s => s.count > 0);
+
+  track.innerHTML = segments.map(s =>
+    `<div class="fleet-pulse-segment ${s.cls}"
+          style="flex:${s.count}"
+          title="${s.label}: ${s.count} unit"></div>`
+  ).join('');
+
+  legend.innerHTML = segments.map(s => `
+    <div class="fleet-legend-item">
+      <div class="fleet-legend-dot" style="background:${s.dotColor}"></div>
+      <span class="fleet-legend-count">${s.count}</span>
+      <span>${s.label}</span>
+    </div>
+  `).join('');
+}
+
+// ── Daily WO Chart ────────────────────────────────────────────────────────────
+function renderDailyChart(dailyStats) {
+  const wrapper = document.getElementById('chart-daily-wrapper');
+  const noticeEl = document.getElementById('chart-daily-notice');
+  const ctx = document.getElementById('chart-wo-daily');
+  if (!ctx) return;
+
+  const totalActivity = dailyStats.reduce((sum, d) => sum + (d.open||0) + (d.closed||0) + (d.hold||0), 0);
+
+  if (totalActivity === 0) {
+    // Empty state
+    wrapper.style.display = 'none';
+    noticeEl.style.display = 'block';
+    noticeEl.innerHTML = `
+      <div class="chart-empty">
+        <div class="chart-empty-icon">${icons.clipboardList || '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="4" rx="1"/><path d="M14 4h2a2 2 0 012 2v14a2 2 0 01-2 2H8a2 2 0 01-2-2V6a2 2 0 012-2h2"/></svg>'}</div>
+        <h4>Belum ada WO bulan ini</h4>
+        <p>Work order yang dibuat bulan ini akan muncul di sini</p>
+      </div>`;
+    return;
+  }
+
+  // Low-data notice if only a few days have activity
+  const activeDays = dailyStats.filter(d => (d.open||0) + (d.closed||0) + (d.hold||0) > 0).length;
+  if (activeDays <= 3 && dailyStats.length > 10) {
+    noticeEl.style.display = 'block';
+    noticeEl.innerHTML = `
+      <div class="chart-low-data-notice">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Data hanya tersedia pada ${activeDays} hari — grafik akan lebih informatif saat bulan berjalan.
+      </div>`;
+  }
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dailyStats.map(d => d.label),
+      datasets: [
+        {
+          label: 'Closed',
+          data: dailyStats.map(d => d.closed),
+          backgroundColor: CHART.closed + 'CC',
+          borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
+          borderSkipped: 'bottom',
+          stack: 'stack1',
+          order: 2,
+        },
+        {
+          label: 'Open',
+          data: dailyStats.map(d => d.open),
+          backgroundColor: CHART.open + 'CC',
+          borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
+          borderSkipped: 'bottom',
+          stack: 'stack1',
+          order: 2,
+        },
+        {
+          label: 'Hold',
+          data: dailyStats.map(d => d.hold),
+          backgroundColor: CHART.hold + 'CC',
+          borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
+          borderSkipped: 'bottom',
+          stack: 'stack1',
+          order: 2,
+        },
+        {
+          label: 'Total Terplan',
+          data: dailyStats.map(d => d.totalPlanned),
+          type: 'line',
+          borderColor: CHART.planned,
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          borderDash: [4, 3],
+          pointRadius: 0,
+          tension: 0.2,
+          fill: false,
+          order: 1,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: {
+            color: CHART.tick,
+            font: { size: 10 },
+            usePointStyle: true,
+            pointStyle: 'rectRounded',
+            padding: 14,
+          }
+        },
+        tooltip: baseTooltip,
+      },
+      scales: {
+        x: { ...baseScaleOpts.x, stacked: true },
+        y: { ...baseScaleOpts.y, stacked: true },
+      }
+    }
+  });
+}
+
+// ── WO Trend Chart (6 months) ─────────────────────────────────────────────────
+function renderTrendChart(trend) {
+  const wrapper = document.getElementById('chart-trend-wrapper');
+  const noticeEl = document.getElementById('chart-trend-notice');
+  const ctx = document.getElementById('chart-wo-trend');
+  if (!ctx) return;
+
+  const totalActivity = trend.reduce((sum, t) => sum + (t.open||0) + (t.closed||0), 0);
+
+  if (totalActivity === 0) {
+    wrapper.style.display = 'none';
+    noticeEl.style.display = 'block';
+    noticeEl.innerHTML = `
+      <div class="chart-empty">
+        <div class="chart-empty-icon">${icons.ganttChart || '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h10M8 12h6M8 18h4"/></svg>'}</div>
+        <h4>Belum ada data tren</h4>
+        <p>Tren 6 bulan akan muncul setelah work order dibuat</p>
+      </div>`;
+    return;
+  }
+
+  const activeMonths = trend.filter(t => (t.open||0) + (t.closed||0) > 0).length;
+  if (activeMonths <= 1) {
+    noticeEl.style.display = 'block';
+    noticeEl.innerHTML = `
+      <div class="chart-low-data-notice">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Hanya ${activeMonths} bulan dengan aktivitas — tren akan terlihat dalam beberapa bulan ke depan.
+      </div>`;
+  }
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: trend.map(t => t.label),
+      datasets: [
+        {
+          label: 'Terbuka',
+          data: trend.map(t => t.open),
+          backgroundColor: CHART.open + 'CC',
+          borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 0, bottomRight: 0 },
+          borderSkipped: 'bottom',
+          barPercentage: 0.6,
+        },
+        {
+          label: 'Selesai',
+          data: trend.map(t => t.closed),
+          backgroundColor: CHART.closed + 'CC',
+          borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 0, bottomRight: 0 },
+          borderSkipped: 'bottom',
+          barPercentage: 0.6,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: CHART.tick, font: { size: 10 }, usePointStyle: true, pointStyle: 'rectRounded', padding: 14 } },
+        tooltip: baseTooltip,
+      },
+      scales: baseScaleOpts,
+    }
+  });
+}
+
+// ── Equipment Status Donut ────────────────────────────────────────────────────
+function renderStatusDonut(stats) {
+  const noticeEl = document.getElementById('chart-status-notice');
+  const ctx = document.getElementById('chart-equip-status');
+  if (!ctx) return;
+
+  const counts = [
+    stats.equipmentByStatus?.operational    || 0,
+    stats.equipmentByStatus?.maintenance    || 0,
+    stats.equipmentByStatus?.breakdown      || 0,
+    stats.equipmentByStatus?.decommissioned || 0,
+  ];
+  const total = counts.reduce((a, b) => a + b, 0);
+
+  if (total === 0) {
+    ctx.style.display = 'none';
+    noticeEl.style.display = 'block';
+    noticeEl.innerHTML = `
+      <div class="chart-empty" style="min-height:180px">
+        <div class="chart-empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85m19.5 1.9c-3.5-.93-6.63-.82-8.94 0-2.58.92-5.01 2.86-7.44 6.32"/></svg></div>
+        <h4>Belum ada equipment</h4>
+        <p>Tambahkan equipment untuk melihat distribusi status</p>
+      </div>`;
+    return;
+  }
+
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Operasional', 'Perawatan', 'Rusak', 'Non-Aktif'],
+      datasets: [{
+        data: counts,
+        backgroundColor: [
+          '#2E8B57CC',  // forest green
+          '#E8920ACC',  // amber
+          '#C9372CCC',  // hazard red
+          '#6B7280CC',  // zinc
+        ],
+        borderWidth: 0,
+        spacing: 2,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: CHART.tick,
+            padding: 12,
+            font: { size: 10 },
+            usePointStyle: true,
+            pointStyle: 'rectRounded',
+          }
+        },
+        tooltip: baseTooltip,
+      }
+    }
+  });
+}
+
+// ── Recent WOs table ──────────────────────────────────────────────────────────
+function renderRecentWOs(recentWOs) {
+  const woContainer = document.getElementById('recent-wo-table');
+  if (!woContainer) return;
+
+  if (recentWOs.length === 0) {
+    woContainer.innerHTML = `
+      <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="9" y="2" width="6" height="4" rx="1"/><path d="M14 4h2a2 2 0 012 2v14a2 2 0 01-2 2H8a2 2 0 01-2-2V6a2 2 0 012-2h2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+        <h4>Belum ada work order</h4>
+        <p>Work order akan muncul di sini setelah dibuat</p>
+      </div>`;
+    return;
+  }
+
+  woContainer.innerHTML = `
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0">
+        <thead>
+          <tr>
+            <th>No. WO</th><th>Kategori</th><th>Status</th><th>Prioritas</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${recentWOs.map(wo => {
+            const cat = WO_CATEGORY[wo.category] || WO_CATEGORY.OTHER;
+            const st  = WO_STATUS[wo.status]     || {};
+            const pri = WO_PRIORITY[wo.priority] || {};
+            return `
+            <tr>
+              <td><span class="wo-number">${wo.wo_number}</span></td>
+              <td><span class="badge" style="color:${cat.color};background:${cat.bg}">${cat.label}</span></td>
+              <td><span class="badge" style="color:${st.color};background:${st.bg}">${st.label || wo.status}</span></td>
+              <td><span class="badge" style="color:${pri.color};background:${pri.bg}">${pri.label || wo.priority}</span></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ── Upcoming PMs ──────────────────────────────────────────────────────────────
+function renderUpcomingPMs(upcomingPMs) {
+  const pmContainer = document.getElementById('upcoming-pm-list');
+  if (!pmContainer) return;
+
+  if (upcomingPMs.length === 0) {
+    pmContainer.innerHTML = `
+      <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01"/></svg>
+        <h4>Tidak ada PM terjadwal</h4>
+        <p>Jadwal preventive maintenance akan muncul di sini</p>
+      </div>`;
+    return;
+  }
+
+  pmContainer.innerHTML = upcomingPMs.map(pm => {
+    const overdue = isOverdue(pm.next_due);
+    return `
+    <div class="pm-list-item">
+      <div class="pm-list-info">
+        <div class="pm-list-title">${pm.title}</div>
+        <div class="pm-list-equip">${pm.equipment?.namaEquipment || '—'}</div>
+      </div>
+      <span class="badge" style="
+        color:${overdue ? 'var(--danger)' : 'var(--info)'};
+        background:${overdue ? 'var(--danger-bg)' : 'var(--info-bg)'}">
+        ${overdue ? 'Terlambat' : formatDate(pm.next_due)}
+      </span>
+    </div>`;
+  }).join('');
+}

@@ -138,21 +138,21 @@ export async function renderPlan() {
 
   content.innerHTML = `
     <div class="animate-fade-in">
-      <div class="page-header">
-        <h2>Plan — Analisis Man Hours</h2>
+      <div class="mb-4">
+        <h2 class="h4 fw-bold mb-1">Plan — Analisis Man Hours</h2>
       </div>
 
       <!-- INFO BANNER -->
-      <div class="plan-info-banner">
+      <div class="alert alert-info d-flex align-items-center gap-2 py-2 px-3 small mb-4 border-0 bg-primary bg-opacity-10 text-primary">
         ${icons.activity}
-        <span><strong>Load Man Hours</strong> dihitung dari master data Maintenance Requirements tiap equipment (bukan WO/PM).
-        <strong>Available Man Hours</strong> dihitung dari Jadwal Shift teknisi yang diinput di halaman Jadwal &amp; Teknisi.</span>
+        <div><strong>Load Man Hours</strong> dihitung dari master data Maintenance Requirements tiap equipment (bukan WO/PM).
+        <strong>Available Man Hours</strong> dihitung dari Jadwal Shift teknisi yang diinput di halaman Jadwal &amp; Teknisi.</div>
       </div>
 
       <!-- FILTERS -->
-      <div class="plan-filters">
-        <div class="plan-filter-group">
-          <label>Jenis Periode</label>
+      <div class="d-flex align-items-end gap-3 flex-wrap mb-4 bg-white border rounded p-3">
+        <div>
+          <label class="form-label small mb-1 text-muted text-uppercase fw-semibold" style="letter-spacing:0.05em;">Jenis Periode</label>
           <select class="form-select" id="plan-period-type">
             <option value="month">Bulanan</option>
             <option value="week">Mingguan</option>
@@ -160,100 +160,128 @@ export async function renderPlan() {
             <option value="custom">Custom Range</option>
           </select>
         </div>
-        <div class="plan-filter-group" id="filter-month-wrap">
-          <label>Bulan</label>
-          <input type="month" class="form-input" id="plan-month" value="${currentMonth}" />
+        <div id="filter-month-wrap">
+          <label class="form-label small mb-1 text-muted text-uppercase fw-semibold" style="letter-spacing:0.05em;">Bulan</label>
+          <input type="month" class="form-control" id="plan-month" value="${currentMonth}" />
         </div>
-        <div class="plan-filter-group" id="filter-week-wrap" style="display:none;">
-          <label>Minggu</label>
-          <input type="week" class="form-input" id="plan-week" value="${getISOWeek(now)}" />
+        <div id="filter-week-wrap" style="display:none;">
+          <label class="form-label small mb-1 text-muted text-uppercase fw-semibold" style="letter-spacing:0.05em;">Minggu</label>
+          <input type="week" class="form-control" id="plan-week" value="${getISOWeek(now)}" />
         </div>
-        <div class="plan-filter-group" id="filter-year-wrap" style="display:none;">
-          <label>Tahun</label>
-          <input type="number" class="form-input" id="plan-year" value="${now.getFullYear()}" min="2000" max="2100" style="width:110px;" />
+        <div id="filter-year-wrap" style="display:none;">
+          <label class="form-label small mb-1 text-muted text-uppercase fw-semibold" style="letter-spacing:0.05em;">Tahun</label>
+          <input type="number" class="form-control" id="plan-year" value="${now.getFullYear()}" min="2000" max="2100" style="width:110px;" />
         </div>
-        <div class="plan-filter-group" id="filter-range-start-wrap" style="display:none;">
-          <label>Dari Tanggal</label>
-          <input type="date" class="form-input" id="plan-range-start" value="${now.toISOString().slice(0,10)}" />
+        <div id="filter-range-start-wrap" style="display:none;">
+          <label class="form-label small mb-1 text-muted text-uppercase fw-semibold" style="letter-spacing:0.05em;">Dari Tanggal</label>
+          <input type="date" class="form-control" id="plan-range-start" value="${now.toISOString().slice(0,10)}" />
         </div>
-        <div class="plan-filter-group" id="filter-range-end-wrap" style="display:none;">
-          <label>Sampai Tanggal</label>
-          <input type="date" class="form-input" id="plan-range-end" value="${now.toISOString().slice(0,10)}" />
+        <div id="filter-range-end-wrap" style="display:none;">
+          <label class="form-label small mb-1 text-muted text-uppercase fw-semibold" style="letter-spacing:0.05em;">Sampai Tanggal</label>
+          <input type="date" class="form-control" id="plan-range-end" value="${now.toISOString().slice(0,10)}" />
         </div>
-        <div class="plan-filter-group" id="filter-breakdown-wrap">
-          <label>Tampilan Grafik</label>
+        <div id="filter-breakdown-wrap">
+          <label class="form-label small mb-1 text-muted text-uppercase fw-semibold" style="letter-spacing:0.05em;">Tampilan Grafik</label>
           <select class="form-select" id="plan-chart-breakdown">
             <option value="day">Per Hari</option>
             <option value="week">Per Minggu</option>
           </select>
         </div>
-        <button class="btn btn-primary" id="btn-plan-refresh" style="height:38px;margin-top:auto;">
+        <button class="btn btn-primary d-flex align-items-center gap-2" id="btn-plan-refresh">
           ${icons.activity} Hitung
         </button>
       </div>
 
       <!-- SUMMARY CARDS -->
-      <div class="plan-summary-cards">
-        <div class="plan-stat-card animate-fade-in-up" style="--card-accent: linear-gradient(90deg,#173B63,#0E2439);">
-          <div class="plan-stat-icon" style="background:rgba(23,59,99,0.15);color:#173B63;">${icons.clock}</div>
-          <div class="plan-stat-value" id="stat-available">–</div>
-          <div class="plan-stat-label">Available Man Hours</div>
-          <div class="plan-stat-sub" id="stat-available-sub">dari jadwal shift teknisi</div>
+      <div class="row g-4 mb-4">
+        <div class="col-md-4">
+          <div class="card h-100 border-0 shadow-sm" style="border-top: 3px solid #173B63 !important;">
+            <div class="card-body">
+              <div class="d-flex align-items-center mb-3">
+                <div class="rounded p-2 bg-primary bg-opacity-10 text-primary me-3">${icons.clock}</div>
+                <div class="text-uppercase text-muted small fw-bold">Available Man Hours</div>
+              </div>
+              <h3 class="fw-bold mb-1" id="stat-available">–</h3>
+              <div class="text-muted small" id="stat-available-sub">dari jadwal shift teknisi</div>
+            </div>
+          </div>
         </div>
-        <div class="plan-stat-card animate-fade-in-up" style="--card-accent: linear-gradient(90deg,#8b5cf6,#a855f7);">
-          <div class="plan-stat-icon" style="background:rgba(139,92,246,0.15);color:#8b5cf6;">${icons.clipboardList}</div>
-          <div class="plan-stat-value" id="stat-load">–</div>
-          <div class="plan-stat-label">Load Man Hours</div>
-          <div class="plan-stat-sub" id="stat-load-sub">dari requirement equipment</div>
+        <div class="col-md-4">
+          <div class="card h-100 border-0 shadow-sm" style="border-top: 3px solid #8b5cf6 !important;">
+            <div class="card-body">
+              <div class="d-flex align-items-center mb-3">
+                <div class="rounded p-2 text-white me-3" style="background:#8b5cf6;">${icons.clipboardList}</div>
+                <div class="text-uppercase text-muted small fw-bold">Load Man Hours</div>
+              </div>
+              <h3 class="fw-bold mb-1" id="stat-load">–</h3>
+              <div class="text-muted small" id="stat-load-sub">dari requirement equipment</div>
+            </div>
+          </div>
         </div>
-        <div class="plan-stat-card animate-fade-in-up" style="--card-accent: linear-gradient(90deg,#10b981,#059669);">
-          <div class="plan-stat-icon" style="background:rgba(16,185,129,0.15);color:#10b981;">${icons.trendingUp}</div>
-          <div class="plan-stat-value" id="stat-effectiveness">–%</div>
-          <div class="plan-stat-label">Efektivitas</div>
-          <div class="plan-stat-sub" id="stat-eff-badge">–</div>
+        <div class="col-md-4">
+          <div class="card h-100 border-0 shadow-sm" style="border-top: 3px solid #10b981 !important;">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center">
+                  <div class="rounded p-2 text-white me-3" style="background:#10b981;">${icons.trendingUp}</div>
+                  <div class="text-uppercase text-muted small fw-bold">Efektivitas</div>
+                </div>
+                <div id="stat-eff-badge">–</div>
+              </div>
+              <h3 class="fw-bold mb-1" id="stat-effectiveness">–%</h3>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- CHARTS ROW -->
-      <div class="plan-charts-row">
+      <div class="row g-4 mb-4">
         <!-- Gauge Chart -->
-        <div class="chart-card animate-fade-in-up">
-          <div class="chart-card-header">
-            <h3 class="chart-card-title">Gauge Efektivitas</h3>
-          </div>
-          <div style="position:relative;height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-            <canvas id="chart-gauge" style="max-width:260px;max-height:260px;"></canvas>
-            <div id="gauge-center-label" style="position:absolute;bottom:40px;text-align:center;">
-              <div style="font-size:1.6rem;font-weight:700;color:var(--text-primary);" id="gauge-pct-label">–%</div>
-              <div style="font-size:0.75rem;color:var(--text-muted);">Efektivitas</div>
+        <div class="col-lg-4">
+          <div class="card h-100 border-0 shadow-sm animate-fade-in-up">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+              <h6 class="card-title mb-0 fw-bold">Gauge Efektivitas</h6>
             </div>
-          </div>
-          <div style="margin-top:var(--sp-3);padding:0 var(--sp-2);">
-            <div style="display:flex;flex-direction:column;gap:6px;font-size:var(--fs-xs);color:var(--text-muted);">
-              <div style="display:flex;align-items:center;gap:8px;"><span style="width:12px;height:12px;border-radius:2px;background:#8CC63F;display:inline-block;"></span> Ideal (70-100%)</div>
-              <div style="display:flex;align-items:center;gap:8px;"><span style="width:12px;height:12px;border-radius:2px;background:#F59E0B;display:inline-block;"></span> Overload Ringan (100-120%)</div>
-              <div style="display:flex;align-items:center;gap:8px;"><span style="width:12px;height:12px;border-radius:2px;background:#EF4444;display:inline-block;"></span> Kritis (&gt;120% atau &lt;50%)</div>
+            <div class="card-body d-flex flex-column">
+              <div style="position:relative;height:240px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                <canvas id="chart-gauge" style="max-width:240px;max-height:240px;"></canvas>
+                <div id="gauge-center-label" style="position:absolute;bottom:30px;text-align:center;">
+                  <div style="font-size:1.8rem;font-weight:700;color:var(--text-primary);" id="gauge-pct-label">–%</div>
+                  <div style="font-size:0.75rem;color:var(--text-muted);">Efektivitas</div>
+                </div>
+              </div>
+              <div class="mt-auto px-2">
+                <div class="d-flex flex-column gap-2 small text-muted">
+                  <div class="d-flex align-items-center gap-2"><span style="width:12px;height:12px;border-radius:2px;background:#8CC63F;display:inline-block;"></span> Ideal (70-100%)</div>
+                  <div class="d-flex align-items-center gap-2"><span style="width:12px;height:12px;border-radius:2px;background:#F59E0B;display:inline-block;"></span> Overload Ringan (100-120%)</div>
+                  <div class="d-flex align-items-center gap-2"><span style="width:12px;height:12px;border-radius:2px;background:#EF4444;display:inline-block;"></span> Kritis (&gt;120% atau &lt;50%)</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Trend Chart -->
-        <div class="chart-card animate-fade-in-up">
-          <div class="chart-card-header">
-            <h3 class="chart-card-title">Tren Available vs Load Man Hours</h3>
-          </div>
-          <div style="position:relative;height:280px;">
-            <canvas id="chart-trend"></canvas>
+        <div class="col-lg-8">
+          <div class="card h-100 border-0 shadow-sm animate-fade-in-up">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+              <h6 class="card-title mb-0 fw-bold">Tren Available vs Load Man Hours</h6>
+            </div>
+            <div class="card-body">
+              <div style="position:relative;height:300px;">
+                <canvas id="chart-trend"></canvas>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- TECHNICIAN BREAKDOWN TABLE -->
-      <div class="card animate-fade-in-up plan-tech-table">
-        <div class="card-header">
-          <h3 class="card-title">Breakdown per Teknisi</h3>
+      <div class="card border-0 shadow-sm animate-fade-in-up mb-5">
+        <div class="card-header bg-white pt-4 pb-3">
+          <h6 class="card-title mb-0 fw-bold">Breakdown per Teknisi</h6>
         </div>
-        <div id="tech-breakdown-wrapper">
+        <div class="card-body p-0" id="tech-breakdown-wrapper">
           <div class="plan-loading"><div class="spinner"></div></div>
         </div>
       </div>
@@ -760,50 +788,52 @@ function renderTechBreakdown(technicians, availPerTech, loadPerTech, requirement
   rows.sort((a, b) => b.eff - a.eff);
 
   wrapper.innerHTML = `
-    <div class="table-container">
-      <table class="data-table">
-        <thead><tr>
-          <th>Teknisi</th>
-          <th>Available Hours</th>
-          <th>Load Hours (Requirements)</th>
-          <th>Efektivitas</th>
-          <th>Status</th>
-        </tr></thead>
+    <div class="table-responsive">
+      <table class="table table-hover table-bordered mb-0">
+        <thead>
+          <tr class="table-light">
+            <th>Teknisi</th>
+            <th>Available Hours</th>
+            <th>Load Hours (Requirements)</th>
+            <th>Efektivitas</th>
+            <th>Status</th>
+          </tr>
+        </thead>
         <tbody>
           ${rows.map(({ t, available, load, eff, color, effLabel, barPct, reqCount }) => `
             <tr>
               <td>
-                <div style="display:flex;align-items:center;gap:var(--sp-3)">
+                <div class="d-flex align-items-center gap-3">
                   <div class="sidebar-avatar" style="width:32px;height:32px;font-size:var(--fs-xs);">${(t.full_name || 'T').charAt(0).toUpperCase()}</div>
                   <div>
-                    <div style="font-weight:var(--fw-medium)">${escapeHtml(t.full_name || '-')}</div>
-                    ${reqCount > 0 ? `<div style="font-size:var(--fs-xs);color:var(--text-muted)">${reqCount} req di-assign</div>` : '<div style="font-size:var(--fs-xs);color:var(--text-muted)">Tidak ada req yang di-assign</div>'}
+                    <div class="fw-medium">${escapeHtml(t.full_name || '-')}</div>
+                    ${reqCount > 0 ? `<div class="text-muted small">${reqCount} req di-assign</div>` : '<div class="text-muted small">Tidak ada req yang di-assign</div>'}
                   </div>
                 </div>
               </td>
               <td>
-                <div style="font-weight:var(--fw-semibold)">${available.toFixed(1)} jam</div>
-                <div style="font-size:var(--fs-xs);color:var(--text-muted)">dari jadwal shift</div>
+                <div class="fw-semibold">${available.toFixed(1)} jam</div>
+                <div class="text-muted small">dari jadwal shift</div>
               </td>
               <td>
-                <div style="font-weight:var(--fw-semibold)">${load.toFixed(1)} jam</div>
-                <div style="font-size:var(--fs-xs);color:var(--text-muted)">${reqCount} requirement</div>
+                <div class="fw-semibold">${load.toFixed(1)} jam</div>
+                <div class="text-muted small">${reqCount} requirement</div>
               </td>
               <td style="min-width:160px;">
-                <div class="eff-bar-wrap">
-                  <div class="eff-bar">
-                    <div class="eff-bar-fill" style="width:${barPct}%;background:${color};"></div>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="progress flex-grow-1" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar" style="width:${barPct}%;background:${color};" aria-valuenow="${barPct}" aria-valuemin="0" aria-valuemax="100"></div>
                   </div>
-                  <span style="font-weight:var(--fw-semibold);color:${color};min-width:40px;text-align:right">${eff}%</span>
+                  <span class="fw-semibold text-end" style="color:${color};min-width:40px;">${eff}%</span>
                 </div>
               </td>
-              <td><span class="effectiveness-badge ${effLabel.cls}">${effLabel.text}</span></td>
+              <td><span class="badge" style="background-color: ${color}; color: ${color === '#F59E0B' ? '#000' : '#fff'};">${effLabel.text}</span></td>
             </tr>
           `).join('')}
         </tbody>
       </table>
     </div>
-    <div style="padding:var(--sp-4);font-size:var(--fs-xs);color:var(--text-muted);border-top:1px solid var(--border-color);">
+    <div class="p-3 small text-muted border-top">
       <strong>Load Hours</strong> = Σ (man_hours_requirement × jumlah kemunculan interval dalam periode), dari master data Equipment — Maintenance Requirements.<br>
       <strong>Available Hours</strong> = Σ durasi jam shift teknisi dari Jadwal Matriks.<br>
       Teknisi tanpa requirement yang di-assign = Load 0 jam (requirement tanpa PIC tidak terhitung di sini).

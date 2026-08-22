@@ -1,85 +1,109 @@
 :root {
-  /* ===== MODERN CORPORATE AVIATION THEME ===== */
-  /* Primary  : #0E2439  Navy Blue               */
-  /* Secondary: #173B63  Dark Blue               */
-  /* Accent   : #8CC63F  Lime Green              */
-  /* Background: #F5F7FA                         */
-  /* Surface  : #FFFFFF                          */
-  /* Border   : #DCE3EA                          */
-  /* Text Pri : #1F2937                          */
-  /* Text Sec : #6B7280                          */
+  /* ===== INDUSTRIAL PATINA THEME ===== */
+  /* Inspired by: safety lamps, oxidized steel plates, instrument panels */
+  /* Accent  : #E8920A  Safety Amber                                     */
+  /* Green   : #2E8B57  Forest / Operational                             */
+  /* Sidebar : #1C2127  Iron Dark                                        */
+  /* Hazard  : #C9372C  ISO Hazard Red                                   */
+  /* Neutral : #F0F2F5  Graphite / Concrete                              */
 
-  /* ---- Brand palette ---- */
-  --color-navy:      #0E2439;
-  --color-dark-blue: #173B63;
-  --color-lime:      #8CC63F;
-  --color-lime-dark: #7AB535;
+  /* ---- Core palette ---- */
+  --iron:          #1C2127;  /* sidebar, header bg */
+  --iron-mid:      #252C35;  /* sidebar section bg */
+  --iron-light:    #2E3744;  /* sidebar hover */
+  --iron-edge:     #38424F;  /* sidebar borders */
+  --steel:         #8A96A3;  /* muted text / secondary */
+  --graphite:      #F0F2F5;  /* page background */
+  --plate:         #FFFFFF;  /* card surface */
+
+  /* ---- Accent — Safety Amber ---- */
+  --amber:              #E8920A;
+  --amber-hover:        #D4840A;
+  --amber-dim:          rgba(232, 146, 10, 0.12);
+  --amber-glow:         rgba(232, 146, 10, 0.22);
+  --amber-gradient:     linear-gradient(135deg, #E8920A 0%, #C4720A 100%);
 
   /* ---- Background ---- */
-  --bg-primary:       #F5F7FA;
-  --bg-secondary:     #FFFFFF;
-  --bg-tertiary:      #EBF0F5;
-  --bg-card:          #FFFFFF;
-  --bg-card-hover:    #F5F7FA;
-  --bg-glass:         rgba(14, 36, 57, 0.04);
-  --bg-glass-strong:  rgba(14, 36, 57, 0.09);
-  --bg-input:         #FFFFFF;
-  --bg-sidebar:       #0E2439;
-  --bg-topbar:        rgba(255, 255, 255, 0.95);
-  --bg-modal-overlay: rgba(14, 36, 57, 0.55);
+  --bg-primary:       var(--graphite);
+  --bg-secondary:     var(--plate);
+  --bg-tertiary:      #E8EBF0;
+  --bg-card:          var(--plate);
+  --bg-card-hover:    #FAFBFC;
+  --bg-glass:         rgba(28, 33, 39, 0.04);
+  --bg-glass-strong:  rgba(28, 33, 39, 0.08);
+  --bg-input:         var(--plate);
+  --bg-sidebar:       var(--iron);
+  --bg-topbar:        rgba(255, 255, 255, 0.97);
+  --bg-modal-overlay: rgba(15, 18, 22, 0.65);
 
   /* ---- Border ---- */
-  --border-color:       #DCE3EA;
-  --border-color-hover: #B0BEC5;
-  --border-glass:       #DCE3EA;
+  --border-color:       #E2E6EA;
+  --border-color-hover: #C4CAD4;
+  --border-glass:       #E2E6EA;
 
   /* ---- Text ---- */
-  --text-primary:   #1F2937;
-  --text-secondary: #6B7280;
-  --text-muted:     #9CA3AF;
+  --text-primary:   #1A2230;
+  --text-secondary: #4A5568;
+  --text-muted:     var(--steel);
   --text-inverse:   #FFFFFF;
 
-  /* ---- Accent (Lime Green) ---- */
-  --accent:                #8CC63F;
-  --accent-hover:          #7AB535;
-  --accent-glow:           rgba(140, 198, 63, 0.25);
-  --accent-gradient:       linear-gradient(135deg, #8CC63F 0%, #173B63 100%);
-  --accent-gradient-hover: linear-gradient(135deg, #7AB535 0%, #0E2439 100%);
-
-  /* ---- Sidebar (always dark navy — needs dedicated tokens) ---- */
-  --sidebar-nav-color:      rgba(255, 255, 255, 0.62);
-  --sidebar-nav-hover-bg:   rgba(255, 255, 255, 0.08);
-  --sidebar-nav-active-bg:  rgba(140, 198, 63, 0.15);
-  --sidebar-nav-active-clr: #8CC63F;
-  --sidebar-section-color:  rgba(255, 255, 255, 0.35);
-  --sidebar-border:         rgba(255, 255, 255, 0.09);
+  /* ---- Sidebar tokens ---- */
+  --sidebar-nav-color:      rgba(255, 255, 255, 0.55);
+  --sidebar-nav-hover-bg:   var(--iron-light);
+  --sidebar-nav-active-bg:  rgba(232, 146, 10, 0.12);
+  --sidebar-nav-active-clr: var(--amber);
+  --sidebar-section-color:  rgba(255, 255, 255, 0.28);
+  --sidebar-border:         var(--iron-edge);
   --sidebar-user-name-clr:  #FFFFFF;
-  --sidebar-user-role-clr:  rgba(255, 255, 255, 0.5);
+  --sidebar-user-role-clr:  rgba(255, 255, 255, 0.42);
+
+  /* ---- Semantic — Equipment status ---- */
+  --status-operational:     #2E8B57;   /* Forest green  */
+  --status-operational-dim: rgba(46, 139, 87, 0.12);
+  --status-maintenance:     #E8920A;   /* Amber         */
+  --status-maintenance-dim: rgba(232, 146, 10, 0.12);
+  --status-breakdown:       #C9372C;   /* ISO hazard red*/
+  --status-breakdown-dim:   rgba(201, 55, 44, 0.12);
+  --status-inactive:        #6B7280;   /* Zinc          */
+  --status-inactive-dim:    rgba(107, 114, 128, 0.12);
+
+  /* ---- Semantic — WO / alerts ---- */
+  --success:    #2E8B57;
+  --success-bg: rgba(46, 139, 87, 0.12);
+  --warning:    #E8920A;
+  --warning-bg: rgba(232, 146, 10, 0.12);
+  --danger:     #C9372C;
+  --danger-bg:  rgba(201, 55, 44, 0.12);
+  --info:       #2D6A9F;
+  --info-bg:    rgba(45, 106, 159, 0.12);
+  --purple:     #6E4FC8;
+  --purple-bg:  rgba(110, 79, 200, 0.12);
+
+  /* ---- Accent (alias to amber) ---- */
+  --accent:                var(--amber);
+  --accent-hover:          var(--amber-hover);
+  --accent-glow:           var(--amber-glow);
+  --accent-gradient:       var(--amber-gradient);
+  --accent-gradient-hover: linear-gradient(135deg, #D4840A 0%, #B06A08 100%);
+
+  /* ---- Chart colors (in use order) ---- */
+  --chart-open:    #2D6A9F;  /* cold blue     */
+  --chart-closed:  #2E8B57;  /* signal green  */
+  --chart-hold:    #E8920A;  /* safety amber  */
+  --chart-planned: #1A2230;  /* iron dark     */
 
   /* ---- Table ---- */
-  --table-header-bg: #F0F4F8;
-  --table-row-hover: rgba(14, 36, 57, 0.03);
-  --table-border:    rgba(14, 36, 57, 0.07);
+  --table-header-bg: #EDF0F4;
+  --table-row-hover: rgba(28, 33, 39, 0.03);
+  --table-border:    rgba(28, 33, 39, 0.07);
 
   /* ---- Scrollbar ---- */
-  --scrollbar-thumb:       rgba(14, 36, 57, 0.18);
-  --scrollbar-thumb-hover: rgba(14, 36, 57, 0.30);
-
-  /* ---- Semantic (status / badge colors) ---- */
-  --success:    #10b981;
-  --success-bg: rgba(16, 185, 129, 0.12);
-  --warning:    #f59e0b;
-  --warning-bg: rgba(245, 158, 11, 0.12);
-  --danger:     #ef4444;
-  --danger-bg:  rgba(239, 68, 68, 0.12);
-  --info:       #3b82f6;
-  --info-bg:    rgba(59, 130, 246, 0.12);
-  --purple:     #8b5cf6;
-  --purple-bg:  rgba(139, 92, 246, 0.12);
+  --scrollbar-thumb:       rgba(28, 33, 39, 0.16);
+  --scrollbar-thumb-hover: rgba(28, 33, 39, 0.28);
 
   /* ---- Typography ---- */
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-body: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
 
   --fs-xs:   0.7rem;
   --fs-sm:   0.8rem;
@@ -106,26 +130,26 @@
   --sp-10: 2.5rem;
   --sp-12: 3rem;
 
-  /* ---- Radius ---- */
-  --radius-sm:   6px;
-  --radius-md:   10px;
-  --radius-lg:   14px;
-  --radius-xl:   20px;
+  /* ---- Radius — slightly sharper than before ---- */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   18px;
   --radius-full: 9999px;
 
-  /* ---- Shadows (adjusted for light theme) ---- */
-  --shadow-sm:   0 1px 3px rgba(14, 36, 57, 0.07);
-  --shadow-md:   0 4px 12px rgba(14, 36, 57, 0.09);
-  --shadow-lg:   0 8px 30px rgba(14, 36, 57, 0.12);
-  --shadow-glow: 0 0 20px var(--accent-glow);
+  /* ---- Shadows — warm, not blue-tinted ---- */
+  --shadow-sm:   0 1px 3px rgba(20, 25, 32, 0.08);
+  --shadow-md:   0 4px 12px rgba(20, 25, 32, 0.10);
+  --shadow-lg:   0 8px 28px rgba(20, 25, 32, 0.13);
+  --shadow-glow: 0 0 0 3px var(--amber-glow);
 
   /* ---- Transitions ---- */
   --transition-fast: 0.15s ease;
-  --transition-base: 0.25s ease;
+  --transition-base: 0.22s ease;
   --transition-slow: 0.4s ease;
 
   /* ---- Layout ---- */
-  --sidebar-width:     260px;
-  --sidebar-collapsed: 72px;
-  --topbar-height:     64px;
+  --sidebar-width:     256px;
+  --sidebar-collapsed: 68px;
+  --topbar-height:     60px;
 }

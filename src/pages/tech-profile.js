@@ -44,52 +44,61 @@ function renderProfileContent(content, profile, history) {
 
   content.innerHTML = `
     <!-- Profile Header -->
-    <div class="tech-profile-header">
-      <div class="tech-profile-avatar" id="avatar-trigger">
+    <div class="text-center mb-4 pt-3">
+      <div class="tech-profile-avatar mx-auto mb-3" id="avatar-trigger" style="width:80px;height:80px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:2rem;position:relative;cursor:pointer;overflow:hidden;">
         ${avatarContent}
-        <div class="tech-profile-avatar-overlay">${icons.camera}</div>
+        <div class="tech-profile-avatar-overlay" style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.5);color:white;font-size:1rem;padding:4px 0;text-align:center;">${icons.camera}</div>
       </div>
       <input type="file" id="avatar-input" accept="image/*" style="display:none" />
-      <div class="tech-profile-name">${escapeHtml(profile?.full_name || 'Teknisi')}</div>
-      <div class="tech-profile-role-badge">Teknisi</div>
+      <h4 class="mb-1 text-dark fw-bold">${escapeHtml(profile?.full_name || 'Teknisi')}</h4>
+      <span class="badge bg-primary bg-opacity-10 text-primary">Teknisi</span>
     </div>
 
     <!-- Edit Profile -->
-    <div class="tech-form-card">
-      <div class="tech-form-card-title">${icons.user} Edit Profil</div>
-      <div class="form-group">
-        <label class="form-label">Nama Lengkap</label>
-        <input type="text" class="form-input" id="p-name" value="${escapeHtml(profile?.full_name || '')}" placeholder="Nama lengkap" />
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <h6 class="card-title d-flex align-items-center gap-2 mb-4 fw-semibold text-dark">${icons.user} Edit Profil</h6>
+        <div class="mb-3">
+          <label class="form-label">Nama Lengkap</label>
+          <input type="text" class="form-control" id="p-name" value="${escapeHtml(profile?.full_name || '')}" placeholder="Nama lengkap" />
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" id="p-email" value="${escapeHtml(profile?.email || '')}" placeholder="Email" />
+        </div>
+        <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2" id="p-save-info">${icons.save} Simpan Perubahan</button>
       </div>
-      <div class="form-group">
-        <label class="form-label">Email</label>
-        <input type="email" class="form-input" id="p-email" value="${escapeHtml(profile?.email || '')}" placeholder="Email" />
-      </div>
-      <button class="btn btn-primary" id="p-save-info" style="width:100%">${icons.save} Simpan Perubahan</button>
     </div>
 
     <!-- Change Password -->
-    <div class="tech-form-card">
-      <div class="tech-form-card-title">${icons.shieldCheck} Ganti Password</div>
-      <div class="form-group">
-        <label class="form-label">Password Baru</label>
-        <input type="password" class="form-input" id="p-new-pass" placeholder="Minimal 6 karakter" />
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <h6 class="card-title d-flex align-items-center gap-2 mb-4 fw-semibold text-dark">${icons.shieldCheck} Ganti Password</h6>
+        <div class="mb-3">
+          <label class="form-label">Password Baru</label>
+          <input type="password" class="form-control" id="p-new-pass" placeholder="Minimal 6 karakter" />
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Konfirmasi Password</label>
+          <input type="password" class="form-control" id="p-confirm-pass" placeholder="Ulangi password baru" />
+        </div>
+        <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2" id="p-save-pass">${icons.shieldCheck} Ganti Password</button>
       </div>
-      <div class="form-group">
-        <label class="form-label">Konfirmasi Password</label>
-        <input type="password" class="form-input" id="p-confirm-pass" placeholder="Ulangi password baru" />
-      </div>
-      <button class="btn btn-primary" id="p-save-pass" style="width:100%">${icons.shieldCheck} Ganti Password</button>
     </div>
 
     <!-- WO History -->
-    <div class="tech-history-card">
-      <div class="tech-form-card-title" style="margin-bottom:var(--sp-3)">${icons.history} Riwayat WO Selesai <span class="tech-section-count" style="margin-left:auto">${history.length}</span></div>
-      ${historyHtml}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+          <h6 class="card-title d-flex align-items-center gap-2 mb-0 fw-semibold text-dark">${icons.history} Riwayat WO Selesai</h6>
+          <span class="badge bg-secondary rounded-pill">${history.length}</span>
+        </div>
+        ${historyHtml}
+      </div>
     </div>
 
     <!-- Logout -->
-    <button class="btn btn-ghost" id="p-logout" style="width:100%;justify-content:center;gap:var(--sp-2);color:var(--danger);border:1px solid var(--danger);margin-bottom:var(--sp-8)">
+    <button class="btn btn-outline-danger w-100 py-2 d-flex align-items-center justify-content-center gap-2 mb-5" id="p-logout">
       ${icons.logOut} Keluar dari Akun
     </button>
   `;

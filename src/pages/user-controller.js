@@ -16,13 +16,13 @@ export async function renderUserController() {
 
   content.innerHTML = `
     <div class="animate-fade-in">
-      <div class="page-header">
-        <h2>Kontrol Pengguna</h2>
+      <div class="mb-4 d-flex justify-content-between align-items-center">
+        <h2 class="h4 fw-bold mb-0">Kontrol Pengguna</h2>
       </div>
 
       <!-- ACCESS DENIED (non-admin) -->
       <div id="user-access-denied" style="display:none">
-        <div style="padding:var(--sp-6);background:var(--danger-bg);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius-md);display:flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-sm);color:var(--danger)">
+        <div class="alert alert-danger d-flex align-items-center gap-2 small">
           ${icons.alertTriangle} Halaman ini hanya dapat diakses oleh Admin.
         </div>
       </div>
@@ -30,114 +30,123 @@ export async function renderUserController() {
       <!-- ADMIN PANEL -->
       <div id="user-admin-panel" style="display:none">
         <!-- Sub-Tabs -->
-        <div class="login-tabs" id="uc-tabs" style="margin-bottom:var(--sp-5)">
-          <button class="login-tab active" data-uc-tab="list">Daftar Pengguna</button>
-          <button class="login-tab" data-uc-tab="register">Daftar Akun Baru</button>
-          <button class="login-tab" data-uc-tab="reset">Reset Kata Sandi</button>
-        </div>
+        <ul class="nav nav-pills mb-4 bg-white border rounded p-1 d-inline-flex" id="uc-tabs">
+          <li class="nav-item">
+            <button class="nav-link active" data-uc-tab="list">Daftar Pengguna</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-uc-tab="register">Daftar Akun Baru</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-uc-tab="reset">Reset Kata Sandi</button>
+          </li>
+        </ul>
 
         <!-- ERROR / SUCCESS banner -->
-        <div class="login-error" id="uc-error"></div>
-        <div class="login-success" id="uc-success"></div>
+        <div class="alert alert-danger d-none" id="uc-error"></div>
+        <div class="alert alert-success d-none" id="uc-success"></div>
 
         <!-- TAB: LIST -->
         <div id="uc-tab-list">
-          <div class="page-header" style="margin-bottom:var(--sp-4)">
-            <div></div>
-            <div class="page-header-actions">
-              <button class="btn btn-primary" id="add-user-btn">${icons.plus} Tambah Pengguna</button>
-            </div>
+          <div class="d-flex justify-content-end mb-3">
+            <button class="btn btn-primary d-flex align-items-center gap-2" id="add-user-btn">${icons.plus} Tambah Pengguna</button>
           </div>
-          <div id="user-table-wrapper">
-            <div class="page-loading"><div class="spinner"></div></div>
+          <div id="user-table-wrapper" class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+              <div class="plan-loading p-5 d-flex justify-content-center"><div class="spinner"></div></div>
+            </div>
           </div>
           <!-- BULK ACTION BAR -->
           <div class="bulk-action-bar" id="bulk-action-bar">
             <div class="bulk-selected-count">
-              <span class="badge" id="bulk-count-badge">0</span> item terpilih
+              <span class="badge bg-primary" id="bulk-count-badge">0</span> item terpilih
             </div>
-            <div class="bulk-actions">
-              <select class="form-select form-select-sm" id="bulk-status-select" style="min-width:150px;padding-top:4px;padding-bottom:4px">
+            <div class="bulk-actions d-flex gap-2 align-items-center">
+              <select class="form-select form-select-sm" id="bulk-status-select" style="min-width:150px;">
                 <option value="">Ubah Status...</option>
                 <option value="true">Aktif</option>
                 <option value="false">Non-Aktif</option>
               </select>
-              <button class="btn btn-primary btn-sm" id="btn-bulk-update" style="padding:4px 12px">Update</button>
+              <button class="btn btn-primary btn-sm" id="btn-bulk-update">Update</button>
             </div>
           </div>
         </div>
 
         <!-- TAB: REGISTER -->
         <div id="uc-tab-register" style="display:none">
-          <div style="max-width:480px;margin:0 auto">
-            <p style="margin-bottom:var(--sp-4);font-size:var(--fs-sm);color:var(--text-muted)">
-              Daftarkan akun pengguna baru ke sistem.
-            </p>
-            <form id="uc-reg-form">
-              <div class="form-group">
-                <label class="form-label">Nama Lengkap *</label>
-                <input type="text" class="form-input" id="uc-reg-name" placeholder="Nama lengkap" required />
-              </div>
-              <div class="form-group">
-                <label class="form-label">Email *</label>
-                <input type="email" class="form-input" id="uc-reg-email" placeholder="email@contoh.com" required autocomplete="off" />
-              </div>
-              <div class="form-group">
-                <label class="form-label">Kata Sandi *</label>
-                <input type="password" class="form-input" id="uc-reg-password" placeholder="Minimal 6 karakter" required minlength="6" autocomplete="new-password" />
-              </div>
-              <div class="form-group">
-                <label class="form-label">Konfirmasi Kata Sandi *</label>
-                <input type="password" class="form-input" id="uc-reg-confirm" placeholder="Ulangi kata sandi" required minlength="6" autocomplete="new-password" />
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Role</label>
-                  <select class="form-select" id="uc-reg-role">
-                    ${Object.entries(ROLES).map(([k, v]) => `<option value="${k}" ${k === 'technician' ? 'selected' : ''}>${v.label}</option>`).join('')}
-                  </select>
+          <div class="card border-0 shadow-sm mx-auto" style="max-width:500px;">
+            <div class="card-body p-4">
+              <p class="text-muted small mb-4">
+                Daftarkan akun pengguna baru ke sistem.
+              </p>
+              <form id="uc-reg-form">
+                <div class="mb-3">
+                  <label class="form-label">Nama Lengkap *</label>
+                  <input type="text" class="form-control" id="uc-reg-name" placeholder="Nama lengkap" required />
                 </div>
-                <div class="form-group">
-                  <label class="form-label">Departemen</label>
-                  <input class="form-input" id="uc-reg-dept" placeholder="Opsional" />
+                <div class="mb-3">
+                  <label class="form-label">Email *</label>
+                  <input type="email" class="form-control" id="uc-reg-email" placeholder="email@contoh.com" required autocomplete="off" />
                 </div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Telepon</label>
-                <input class="form-input" id="uc-reg-phone" placeholder="08xxxxxxxxxx" />
-              </div>
-              <button type="submit" class="btn btn-primary" id="uc-reg-btn" style="width:100%">
-                <span id="uc-reg-btn-text">Daftarkan Akun</span>
-                <div class="spinner" id="uc-reg-spinner" style="display:none"></div>
-              </button>
-            </form>
+                <div class="mb-3">
+                  <label class="form-label">Kata Sandi *</label>
+                  <input type="password" class="form-control" id="uc-reg-password" placeholder="Minimal 6 karakter" required minlength="6" autocomplete="new-password" />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Konfirmasi Kata Sandi *</label>
+                  <input type="password" class="form-control" id="uc-reg-confirm" placeholder="Ulangi kata sandi" required minlength="6" autocomplete="new-password" />
+                </div>
+                <div class="row g-3 mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Role</label>
+                    <select class="form-select" id="uc-reg-role">
+                      ${Object.entries(ROLES).map(([k, v]) => `<option value="${k}" ${k === 'technician' ? 'selected' : ''}>${v.label}</option>`).join('')}
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Departemen</label>
+                    <input class="form-control" id="uc-reg-dept" placeholder="Opsional" />
+                  </div>
+                </div>
+                <div class="mb-4">
+                  <label class="form-label">Telepon</label>
+                  <input class="form-control" id="uc-reg-phone" placeholder="08xxxxxxxxxx" />
+                </div>
+                <button type="submit" class="btn btn-primary w-100 d-flex justify-content-center align-items-center gap-2" id="uc-reg-btn">
+                  <span id="uc-reg-btn-text">Daftarkan Akun</span>
+                  <div class="spinner border border-2 border-white ms-2" id="uc-reg-spinner" style="display:none; width: 1rem; height: 1rem; border-right-color: transparent !important;"></div>
+                </button>
+              </form>
+            </div>
           </div>
         </div>
 
         <!-- TAB: RESET SANDI -->
         <div id="uc-tab-reset" style="display:none">
-          <div style="max-width:480px;margin:0 auto">
-            <p style="margin-bottom:var(--sp-4);font-size:var(--fs-sm);color:var(--text-muted)">
-              Reset kata sandi pengguna berdasarkan email terdaftar.
-            </p>
-            <form id="uc-reset-form">
-              <div class="form-group">
-                <label class="form-label">Email Pengguna</label>
-                <input type="email" class="form-input" id="uc-reset-email" placeholder="Masukkan email terdaftar" required autocomplete="off" />
-              </div>
-              <div class="form-group">
-                <label class="form-label">Kata Sandi Baru</label>
-                <input type="password" class="form-input" id="uc-reset-password" placeholder="Minimal 6 karakter" required minlength="6" autocomplete="new-password" />
-              </div>
-              <div class="form-group">
-                <label class="form-label">Konfirmasi Kata Sandi Baru</label>
-                <input type="password" class="form-input" id="uc-reset-confirm" placeholder="Ulangi kata sandi baru" required minlength="6" autocomplete="new-password" />
-              </div>
-              <button type="submit" class="btn btn-primary" id="uc-reset-btn" style="width:100%">
-                <span id="uc-reset-btn-text">Ubah Kata Sandi</span>
-                <div class="spinner" id="uc-reset-spinner" style="display:none"></div>
-              </button>
-            </form>
+          <div class="card border-0 shadow-sm mx-auto" style="max-width:500px;">
+            <div class="card-body p-4">
+              <p class="text-muted small mb-4">
+                Reset kata sandi pengguna berdasarkan email terdaftar.
+              </p>
+              <form id="uc-reset-form">
+                <div class="mb-3">
+                  <label class="form-label">Email Pengguna</label>
+                  <input type="email" class="form-control" id="uc-reset-email" placeholder="Masukkan email terdaftar" required autocomplete="off" />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Kata Sandi Baru</label>
+                  <input type="password" class="form-control" id="uc-reset-password" placeholder="Minimal 6 karakter" required minlength="6" autocomplete="new-password" />
+                </div>
+                <div class="mb-4">
+                  <label class="form-label">Konfirmasi Kata Sandi Baru</label>
+                  <input type="password" class="form-control" id="uc-reset-confirm" placeholder="Ulangi kata sandi baru" required minlength="6" autocomplete="new-password" />
+                </div>
+                <button type="submit" class="btn btn-primary w-100 d-flex justify-content-center align-items-center gap-2" id="uc-reset-btn">
+                  <span id="uc-reset-btn-text">Ubah Kata Sandi</span>
+                  <div class="spinner border border-2 border-white ms-2" id="uc-reset-spinner" style="display:none; width: 1rem; height: 1rem; border-right-color: transparent !important;"></div>
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </div>
@@ -187,8 +196,8 @@ function switchTab(tabName) {
   activeTab = tabName;
   const ucError   = document.getElementById('uc-error');
   const ucSuccess = document.getElementById('uc-success');
-  if (ucError)   { ucError.textContent = ''; ucError.classList.remove('show'); }
-  if (ucSuccess) { ucSuccess.textContent = ''; ucSuccess.classList.remove('show'); }
+  if (ucError)   { ucError.textContent = ''; ucError.classList.add('d-none'); }
+  if (ucSuccess) { ucSuccess.textContent = ''; ucSuccess.classList.add('d-none'); }
 
   // Update button states
   document.querySelectorAll('[data-uc-tab]').forEach(t => {
@@ -206,8 +215,8 @@ async function handleRegister(e) {
   e.preventDefault();
   const errorEl   = document.getElementById('uc-error');
   const successEl = document.getElementById('uc-success');
-  errorEl.classList.remove('show');
-  successEl.classList.remove('show');
+  errorEl.classList.add('d-none');
+  successEl.classList.add('d-none');
 
   const spinner = document.getElementById('uc-reg-spinner');
   const btnText = document.getElementById('uc-reg-btn-text');
@@ -220,12 +229,12 @@ async function handleRegister(e) {
 
   if (password !== confirm) {
     errorEl.textContent = 'Kata sandi dan konfirmasi tidak cocok';
-    errorEl.classList.add('show');
+    errorEl.classList.remove('d-none');
     return;
   }
   if (password.length < 6) {
     errorEl.textContent = 'Kata sandi minimal 6 karakter';
-    errorEl.classList.add('show');
+    errorEl.classList.remove('d-none');
     return;
   }
 
@@ -244,9 +253,9 @@ async function handleRegister(e) {
     if (error) throw error;
 
     successEl.textContent = 'Akun berhasil didaftarkan!';
-    successEl.classList.add('show');
+    successEl.classList.remove('d-none');
     document.getElementById('uc-reg-form').reset();
-    setTimeout(() => successEl.classList.remove('show'), 4000);
+    setTimeout(() => successEl.classList.add('d-none'), 4000);
 
     // Refresh daftar pengguna di background
     await loadUsers();
@@ -257,7 +266,7 @@ async function handleRegister(e) {
     } else {
       errorEl.textContent = msg || 'Gagal mendaftarkan akun';
     }
-    errorEl.classList.add('show');
+    errorEl.classList.remove('d-none');
   } finally {
     spinner.style.display = 'none';
     btnText.textContent = 'Daftarkan Akun';
@@ -269,8 +278,8 @@ async function handleResetPassword(e) {
   e.preventDefault();
   const errorEl   = document.getElementById('uc-error');
   const successEl = document.getElementById('uc-success');
-  errorEl.classList.remove('show');
-  successEl.classList.remove('show');
+  errorEl.classList.add('d-none');
+  successEl.classList.add('d-none');
 
   const spinner = document.getElementById('uc-reset-spinner');
   const btnText = document.getElementById('uc-reset-btn-text');
@@ -281,12 +290,12 @@ async function handleResetPassword(e) {
 
   if (newPassword !== confirm) {
     errorEl.textContent = 'Kata sandi baru dan konfirmasi tidak cocok';
-    errorEl.classList.add('show');
+    errorEl.classList.remove('d-none');
     return;
   }
   if (newPassword.length < 6) {
     errorEl.textContent = 'Kata sandi minimal 6 karakter';
-    errorEl.classList.add('show');
+    errorEl.classList.remove('d-none');
     return;
   }
 
@@ -297,15 +306,15 @@ async function handleResetPassword(e) {
     const success = await resetPassword(email, newPassword);
     if (success) {
       successEl.textContent = 'Kata sandi berhasil diubah!';
-      successEl.classList.add('show');
+      successEl.classList.remove('d-none');
       document.getElementById('uc-reset-form').reset();
-      setTimeout(() => successEl.classList.remove('show'), 4000);
+      setTimeout(() => successEl.classList.add('d-none'), 4000);
     } else {
       throw new Error('Email tidak ditemukan atau tidak terdaftar');
     }
   } catch (err) {
     errorEl.textContent = err.message || 'Gagal mengubah kata sandi';
-    errorEl.classList.add('show');
+    errorEl.classList.remove('d-none');
   } finally {
     spinner.style.display = 'none';
     btnText.textContent = 'Ubah Kata Sandi';
@@ -369,28 +378,30 @@ function renderTable() {
   }
 
   wrapper.innerHTML = `
-    <div class="table-container">
-      <table class="data-table">
-        <thead><tr>
-          <th class="col-checkbox"><input type="checkbox" class="form-checkbox" id="select-all" /></th>
-          <th>Pengguna</th><th>Departemen</th><th>Role</th><th>Skill</th><th>Telepon</th><th>Status</th><th>Terdaftar</th><th>Aksi</th>
-        </tr></thead>
+    <div class="table-responsive">
+      <table class="table table-hover table-bordered mb-0">
+        <thead>
+          <tr class="table-light">
+            <th class="col-checkbox"><input type="checkbox" class="form-check-input" id="select-all" /></th>
+            <th>Pengguna</th><th>Departemen</th><th>Role</th><th>Skill</th><th>Telepon</th><th>Status</th><th>Terdaftar</th><th>Aksi</th>
+          </tr>
+        </thead>
         <tbody>
           ${allUsers.map(u => {
             const skillKey  = (u.skill || '').toUpperCase();
             const skillInfo = TECHNICIAN_SKILLS[skillKey];
             const skillBadge = skillInfo
-              ? `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:0.72rem;font-weight:700;background:${skillInfo.bg};color:${skillInfo.color}">${skillInfo.label}</span>`
-              : `<span style="color:var(--text-muted);font-size:var(--fs-xs)">—</span>`;
+              ? `<span class="badge" style="background:${skillInfo.bg};color:${skillInfo.color}">${skillInfo.label}</span>`
+              : `<span class="text-muted small">—</span>`;
             return `
             <tr>
-              <td class="col-checkbox"><input type="checkbox" class="form-checkbox row-checkbox" value="${u.id}" ${selectedUserIds.includes(u.id) ? 'checked' : ''} /></td>
+              <td class="col-checkbox"><input type="checkbox" class="form-check-input row-checkbox" value="${u.id}" ${selectedUserIds.includes(u.id) ? 'checked' : ''} /></td>
               <td>
-                <div style="display:flex;align-items:center;gap:var(--sp-3)">
+                <div class="d-flex align-items-center gap-3">
                   <div class="sidebar-avatar" style="width:32px;height:32px;font-size:var(--fs-xs)">${(u.full_name || 'U').charAt(0).toUpperCase()}</div>
                   <div>
-                    <div style="font-weight:var(--fw-medium)">${escapeHtml(u.full_name || '-')}</div>
-                    <div style="font-size:var(--fs-xs);color:var(--text-muted)">${u.id.slice(0, 8)}...</div>
+                    <div class="fw-medium">${escapeHtml(u.full_name || '-')}</div>
+                    <div class="text-muted small">${u.id.slice(0, 8)}...</div>
                   </div>
                 </div>
               </td>
@@ -405,8 +416,8 @@ function renderTable() {
               <td>${formatDate(u.created_at)}</td>
               <td>
                 <div class="table-actions">
-                  <button class="btn btn-ghost btn-icon btn-sm" data-edit-user="${u.id}" title="Edit">${icons.edit}</button>
-                  <button class="btn btn-ghost btn-icon btn-sm" data-toggle-user="${u.id}" title="${u.is_active ? 'Nonaktifkan' : 'Aktifkan'}">
+                  <button class="btn btn-outline-warning btn-sm btn-icon" data-edit-user="${u.id}" title="Edit">${icons.edit}</button>
+                  <button class="btn btn-outline-${u.is_active ? 'danger' : 'success'} btn-sm btn-icon" data-toggle-user="${u.id}" title="${u.is_active ? 'Nonaktifkan' : 'Aktifkan'}">
                     ${u.is_active ? icons.userX : icons.userCheck}
                   </button>
                 </div>
@@ -449,37 +460,37 @@ function showUserForm() {
   showModal({
     title: 'Tambah Pengguna Baru',
     body: `
-      <div class="form-group">
+      <div class="mb-3">
         <label class="form-label">Nama Lengkap *</label>
-        <input class="form-input" id="new-user-name" placeholder="Nama lengkap" required />
+        <input class="form-control" id="new-user-name" placeholder="Nama lengkap" required />
       </div>
-      <div class="form-group">
+      <div class="mb-3">
         <label class="form-label">Email *</label>
-        <input type="email" class="form-input" id="new-user-email" placeholder="email@contoh.com" required />
+        <input type="email" class="form-control" id="new-user-email" placeholder="email@contoh.com" required />
       </div>
-      <div class="form-group">
+      <div class="mb-3">
         <label class="form-label">Kata Sandi *</label>
-        <input type="password" class="form-input" id="new-user-password" placeholder="Minimal 6 karakter" required minlength="6" />
+        <input type="password" class="form-control" id="new-user-password" placeholder="Minimal 6 karakter" required minlength="6" />
       </div>
-      <div class="form-row">
-        <div class="form-group">
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
           <label class="form-label">Role</label>
           <select class="form-select" id="new-user-role">
             ${Object.entries(ROLES).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}
           </select>
         </div>
-        <div class="form-group">
+        <div class="col-md-6">
           <label class="form-label">Departemen</label>
-          <input class="form-input" id="new-user-dept" placeholder="Departemen" />
+          <input class="form-control" id="new-user-dept" placeholder="Departemen" />
         </div>
       </div>
-      <div class="form-group">
+      <div class="mb-3">
         <label class="form-label">Telepon</label>
-        <input class="form-input" id="new-user-phone" placeholder="08xxxxxxxxxx" />
+        <input class="form-control" id="new-user-phone" placeholder="08xxxxxxxxxx" />
       </div>
     `,
     footer: `
-      <button class="btn btn-secondary" id="new-user-cancel">Batal</button>
+      <button class="btn btn-outline-secondary" id="new-user-cancel">Batal</button>
       <button class="btn btn-primary" id="new-user-save">Tambah Pengguna</button>
     `,
     onMount: (overlay, close) => {
@@ -516,38 +527,38 @@ function showEditUserForm(user) {
   showModal({
     title: 'Edit Pengguna',
     body: `
-      <div class="form-group">
+      <div class="mb-3">
         <label class="form-label">Nama Lengkap</label>
-        <input class="form-input" id="edit-user-name" value="${user.full_name || ''}" />
+        <input class="form-control" id="edit-user-name" value="${user.full_name || ''}" />
       </div>
-      <div class="form-row">
-        <div class="form-group">
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
           <label class="form-label">Role</label>
           <select class="form-select" id="edit-user-role">
             ${Object.entries(ROLES).map(([k, v]) => `<option value="${k}" ${user.role === k ? 'selected' : ''}>${v.label}</option>`).join('')}
           </select>
         </div>
-        <div class="form-group">
+        <div class="col-md-6">
           <label class="form-label">Departemen</label>
-          <input class="form-input" id="edit-user-dept" value="${user.department || ''}" />
+          <input class="form-control" id="edit-user-dept" value="${user.department || ''}" />
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
           <label class="form-label">Skill</label>
           <select class="form-select" id="edit-user-skill">
             <option value="">— Tidak Ada —</option>
             ${Object.entries(TECHNICIAN_SKILLS).map(([k, v]) => `<option value="${k}" ${(user.skill || '').toUpperCase() === k ? 'selected' : ''}>${v.label}</option>`).join('')}
           </select>
         </div>
-        <div class="form-group">
+        <div class="col-md-6">
           <label class="form-label">Telepon</label>
-          <input class="form-input" id="edit-user-phone" value="${user.phone || ''}" />
+          <input class="form-control" id="edit-user-phone" value="${user.phone || ''}" />
         </div>
       </div>
     `,
     footer: `
-      <button class="btn btn-secondary" id="edit-user-cancel">Batal</button>
+      <button class="btn btn-outline-secondary" id="edit-user-cancel">Batal</button>
       <button class="btn btn-primary" id="edit-user-save">Simpan Perubahan</button>
     `,
     onMount: (overlay, close) => {

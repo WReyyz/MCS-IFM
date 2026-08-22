@@ -130,14 +130,6 @@ export async function renderTechnician() {
       .tech-tab-panel.active { display: block; }
 
       /* ── Stat Cards ── */
-      .tech-stat-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: var(--sp-4);
-        margin-bottom: var(--sp-6);
-      }
-      @media (max-width: 900px) { .tech-stat-grid { grid-template-columns: repeat(2,1fr); } }
-      @media (max-width: 500px) { .tech-stat-grid { grid-template-columns: 1fr; } }
       .tech-stat-card {
         background: var(--bg-surface);
         border: 1px solid var(--border-color);
@@ -175,10 +167,6 @@ export async function renderTechnician() {
 
       /* ── Filter bar ── */
       .tech-filter-bar {
-        display: flex;
-        align-items: center;
-        gap: var(--sp-3);
-        flex-wrap: wrap;
         margin-bottom: var(--sp-4);
       }
       .tech-filter-group {
@@ -404,13 +392,6 @@ export async function renderTechnician() {
       .shift-master-actions { display: flex; gap: 4px; margin-top: auto; padding-top: var(--sp-2); border-top: 1px solid var(--border-color); }
 
       /* ── Daftar Teknisi ── */
-      .tech-stat-grid-3 {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: var(--sp-4);
-        margin-bottom: var(--sp-6);
-      }
-      @media (max-width: 700px) { .tech-stat-grid-3 { grid-template-columns: 1fr; } }
 
       /* ── Cell shift badge ── */
       .shift-badge {
@@ -430,69 +411,93 @@ export async function renderTechnician() {
   content.innerHTML = `
     <div class="animate-fade-in">
       <!-- Header -->
-      <div class="tech-page-header">
-        <div class="tech-page-header-left">
-          <h2>Jadwal Teknisi</h2>
-          <p>Kelola jadwal teknisi dan hitung manhours secara otomatis</p>
+      <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+        <div>
+          <h2 class="h4 fw-bold mb-1">Jadwal Teknisi</h2>
+          <p class="text-secondary small mb-0">Kelola jadwal teknisi dan hitung manhours secara otomatis</p>
         </div>
-        <div class="tech-header-right">
-          <div class="tech-date-range">
-            <input type="date" id="matrix-start" />
-            <span class="tech-date-sep">–</span>
-            <input type="date" id="matrix-end" />
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <div class="d-flex align-items-center gap-2 bg-white border rounded px-3 py-2 small">
+            <input type="date" id="matrix-start" class="border-0 bg-transparent" style="outline:none; width:auto;" />
+            <span class="text-muted">–</span>
+            <input type="date" id="matrix-end" class="border-0 bg-transparent" style="outline:none; width:auto;" />
             ${icons.calendar || '📅'}
           </div>
-          <button class="btn btn-secondary" id="btn-export-excel">${icons.download || '⬇'} Ekspor Excel</button>
+          <button class="btn btn-outline-secondary" id="btn-export-excel">${icons.download || '⬇'} Ekspor Excel</button>
           <button class="btn btn-primary" id="btn-save-matrix" style="display:none;">💾 Simpan Semua</button>
         </div>
       </div>
 
       <!-- TABS -->
-      <div class="tech-tabs">
-        <button class="tech-tab-btn active" data-tab="matriks">${icons.calendarCheck} Jadwal Matriks</button>
-        <button class="tech-tab-btn" data-tab="daftar">${icons.users} Daftar Teknisi</button>
-        <button class="tech-tab-btn" data-tab="shift-master">${icons.clock} Master Shift</button>
+      <div class="nav nav-pills bg-white border rounded p-1 mb-4 d-inline-flex tech-tabs">
+        <button class="nav-link tech-tab-btn active" data-tab="matriks">${icons.calendarCheck} Jadwal Matriks</button>
+        <button class="nav-link tech-tab-btn" data-tab="daftar">${icons.users} Daftar Teknisi</button>
+        <button class="nav-link tech-tab-btn" data-tab="shift-master">${icons.clock} Master Shift</button>
       </div>
 
       <!-- PANEL: Jadwal Matriks -->
       <div class="tech-tab-panel active" id="panel-matriks">
         <!-- 4 Stat Cards -->
-        <div class="tech-stat-grid" id="matrix-stat-grid">
-          <div class="tech-stat-card">
-            <div class="tech-stat-card-icon" style="background:rgba(23,59,99,0.12);color:var(--primary)">${icons.clock || '⏱'}</div>
-            <div class="tech-stat-card-label">Total Manhours</div>
-            <div class="tech-stat-card-value" id="stat-total-mh">—</div>
-            <div class="tech-stat-card-sub" id="stat-total-mh-sub">Periode ini</div>
+        <div class="row g-4 mb-4" id="matrix-stat-grid">
+          <div class="col-md-3 col-sm-6">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="rounded p-2 bg-primary bg-opacity-10 text-primary me-3">${icons.clock || '⏱'}</div>
+                  <div class="text-uppercase text-muted small fw-bold">Total Manhours</div>
+                </div>
+                <h3 class="fw-bold mb-1" id="stat-total-mh">—</h3>
+                <div class="text-muted small" id="stat-total-mh-sub">Periode ini</div>
+              </div>
+            </div>
           </div>
-          <div class="tech-stat-card">
-            <div class="tech-stat-card-icon" style="background:rgba(139,92,246,0.12);color:#8B5CF6">${icons.users || '👥'}</div>
-            <div class="tech-stat-card-label">Total Teknisi</div>
-            <div class="tech-stat-card-value" id="stat-matrix-techs">—</div>
-            <div class="tech-stat-card-sub">Orang Aktif</div>
+          <div class="col-md-3 col-sm-6">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="rounded p-2 text-white me-3" style="background:#8B5CF6;">${icons.users || '👥'}</div>
+                  <div class="text-uppercase text-muted small fw-bold">Total Teknisi</div>
+                </div>
+                <h3 class="fw-bold mb-1" id="stat-matrix-techs">—</h3>
+                <div class="text-muted small">Orang Aktif</div>
+              </div>
+            </div>
           </div>
-          <div class="tech-stat-card">
-            <div class="tech-stat-card-icon" style="background:rgba(16,185,129,0.12);color:#10B981">${icons.calendarCheck || '📅'}</div>
-            <div class="tech-stat-card-label">Total Shift</div>
-            <div class="tech-stat-card-value" id="stat-total-shifts">—</div>
-            <div class="tech-stat-card-sub">Shift / Hari</div>
+          <div class="col-md-3 col-sm-6">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="rounded p-2 text-white me-3" style="background:#10B981;">${icons.calendarCheck || '📅'}</div>
+                  <div class="text-uppercase text-muted small fw-bold">Total Shift</div>
+                </div>
+                <h3 class="fw-bold mb-1" id="stat-total-shifts">—</h3>
+                <div class="text-muted small">Shift / Hari</div>
+              </div>
+            </div>
           </div>
-          <div class="tech-stat-card">
-            <div class="tech-stat-card-icon" style="background:rgba(245,158,11,0.12);color:#F59E0B">${icons.activity || '📈'}</div>
-            <div class="tech-stat-card-label">Rata-rata Manhours / Hari</div>
-            <div class="tech-stat-card-value" id="stat-avg-mh">—</div>
-            <div class="tech-stat-card-sub">Jam / Hari</div>
+          <div class="col-md-3 col-sm-6">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="rounded p-2 text-white me-3" style="background:#F59E0B;">${icons.activity || '📈'}</div>
+                  <div class="text-uppercase text-muted small fw-bold">Rata-rata Manhours</div>
+                </div>
+                <h3 class="fw-bold mb-1" id="stat-avg-mh">—</h3>
+                <div class="text-muted small">Jam / Hari</div>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Filter bar -->
-        <div class="tech-filter-bar">
-          <div class="tech-filter-group">
-            <label>Pilih Teknisi</label>
-            <select class="form-select" id="filter-technician">
+        <div class="d-flex align-items-end gap-3 mb-4 flex-wrap">
+          <div>
+            <label class="form-label small mb-1">Pilih Teknisi</label>
+            <select class="form-select" id="filter-technician" style="min-width:200px;">
               <option value="">Semua Teknisi</option>
             </select>
           </div>
-          <button class="btn btn-primary tech-filter-apply" id="btn-load-matrix">${icons.activity} Tampilkan</button>
+          <button class="btn btn-primary d-flex align-items-center gap-2" id="btn-load-matrix">${icons.activity} Tampilkan</button>
         </div>
 
         <!-- Matrix -->
@@ -526,21 +531,39 @@ export async function renderTechnician() {
 
       <!-- PANEL: Daftar Teknisi -->
       <div class="tech-tab-panel" id="panel-daftar">
-        <div class="tech-stat-grid-3" style="margin-bottom:var(--sp-6)">
-          <div class="tech-stat-card">
-            <div class="tech-stat-card-icon" style="background:rgba(16,185,129,0.15);color:#10b981">${icons.userCheck}</div>
-            <div class="tech-stat-card-label">Bertugas Hari Ini</div>
-            <div class="tech-stat-card-value" id="stat-on-duty">—</div>
+        <div class="row g-4 mb-4">
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="rounded p-2 text-white me-3" style="background:#10b981;">${icons.userCheck}</div>
+                  <div class="text-uppercase text-muted small fw-bold">Bertugas Hari Ini</div>
+                </div>
+                <h3 class="fw-bold mb-0" id="stat-on-duty">—</h3>
+              </div>
+            </div>
           </div>
-          <div class="tech-stat-card">
-            <div class="tech-stat-card-icon" style="background:rgba(107,114,128,0.15);color:#6b7280">${icons.userX}</div>
-            <div class="tech-stat-card-label">Libur Hari Ini</div>
-            <div class="tech-stat-card-value" id="stat-off-duty">—</div>
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="rounded p-2 text-white me-3" style="background:#6b7280;">${icons.userX}</div>
+                  <div class="text-uppercase text-muted small fw-bold">Libur Hari Ini</div>
+                </div>
+                <h3 class="fw-bold mb-0" id="stat-off-duty">—</h3>
+              </div>
+            </div>
           </div>
-          <div class="tech-stat-card">
-            <div class="tech-stat-card-icon" style="background:rgba(139,92,246,0.15);color:#8b5cf6">${icons.users}</div>
-            <div class="tech-stat-card-label">Total Teknisi</div>
-            <div class="tech-stat-card-value" id="stat-total-tech">—</div>
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="rounded p-2 text-white me-3" style="background:#8b5cf6;">${icons.users}</div>
+                  <div class="text-uppercase text-muted small fw-bold">Total Teknisi</div>
+                </div>
+                <h3 class="fw-bold mb-0" id="stat-total-tech">—</h3>
+              </div>
+            </div>
           </div>
         </div>
         <div class="card animate-fade-in-up" style="margin-bottom:var(--sp-5)">
@@ -700,11 +723,13 @@ function renderTechTable() {
     return;
   }
   wrapper.innerHTML = `
-    <div class="table-container" style="border:none">
-      <table class="data-table">
-        <thead><tr>
-          <th>Nama</th><th>Departemen</th><th>Telepon</th><th>Status Hari Ini</th>
-        </tr></thead>
+    <div class="table-responsive">
+      <table class="table table-hover table-bordered mb-0">
+        <thead>
+          <tr>
+            <th>Nama</th><th>Departemen</th><th>Telepon</th><th>Status Hari Ini</th>
+          </tr>
+        </thead>
         <tbody>
           ${technicianList.map(t => {
             const todaySchedule = scheduleData.find(s => s.profile_id === t.id);
@@ -712,9 +737,9 @@ function renderTechTable() {
             return `
             <tr>
               <td>
-                <div style="display:flex;align-items:center;gap:var(--sp-3)">
+                <div class="d-flex align-items-center gap-3">
                   <div class="sidebar-avatar" style="width:32px;height:32px;font-size:var(--fs-xs)">${(t.full_name || 'T').charAt(0).toUpperCase()}</div>
-                  <span>${escapeHtml(t.full_name || '-')}</span>
+                  <span class="fw-medium">${escapeHtml(t.full_name || '-')}</span>
                 </div>
               </td>
               <td>${escapeHtml(t.department || '-')}</td>
@@ -736,11 +761,13 @@ function renderScheduleTable() {
     return;
   }
   wrapper.innerHTML = `
-    <div class="table-container" style="border:none">
-      <table class="data-table">
-        <thead><tr>
-          <th>Teknisi</th><th>Shift</th><th>Status</th><th>Catatan</th><th>Aksi</th>
-        </tr></thead>
+    <div class="table-responsive">
+      <table class="table table-hover table-bordered mb-0">
+        <thead>
+          <tr>
+            <th>Teknisi</th><th>Shift</th><th>Status</th><th>Catatan</th><th>Aksi</th>
+          </tr>
+        </thead>
         <tbody>
           ${scheduleData.map(s => {
             const shiftInfo = shiftMaster.find(sm => sm.kode === (s.shift_code || s.shift));
@@ -748,13 +775,13 @@ function renderScheduleTable() {
             return `
             <tr>
               <td>${s.profiles?.full_name || '-'}</td>
-              <td><span style="font-weight:var(--fw-semibold)">${escapeHtml(shiftLabel)}</span></td>
+              <td><span class="fw-semibold">${escapeHtml(shiftLabel)}</span></td>
               <td>${badge(SCHEDULE_STATUS[s.status]?.label, SCHEDULE_STATUS[s.status]?.color, SCHEDULE_STATUS[s.status]?.bg)}</td>
               <td>${escapeHtml(s.notes || '-')}</td>
               <td>
                 <div class="table-actions">
-                  <button class="btn btn-ghost btn-icon btn-sm" data-edit-schedule="${s.id}" title="Edit">${icons.edit}</button>
-                  <button class="btn btn-ghost btn-icon btn-sm" data-del-schedule="${s.id}" title="Hapus" style="color:var(--danger)">${icons.trash}</button>
+                  <button class="btn btn-outline-warning btn-sm btn-icon" data-edit-schedule="${s.id}" title="Edit">${icons.edit}</button>
+                  <button class="btn btn-outline-danger btn-sm btn-icon" data-del-schedule="${s.id}" title="Hapus">${icons.trash}</button>
                 </div>
               </td>
             </tr>`;
@@ -792,39 +819,39 @@ function showScheduleForm(existing = null) {
   showModal({
     title: isEdit ? 'Edit Jadwal' : 'Atur Jadwal Teknisi',
     body: `
-      <div class="form-group">
-        <label class="form-label">Teknisi *</label>
-        <select class="form-select" id="sched-tech">
-          <option value="">Pilih Teknisi</option>
-          ${technicianList.map(t => `<option value="${t.id}" ${existing?.profile_id === t.id ? 'selected' : ''}>${escapeHtml(t.full_name)}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Tanggal *</label>
-          <input type="date" class="form-input" id="sched-date" value="${existing?.schedule_date || today}" />
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label">Teknisi *</label>
+          <select class="form-select" id="sched-tech">
+            <option value="">Pilih Teknisi</option>
+            ${technicianList.map(t => `<option value="${t.id}" ${existing?.profile_id === t.id ? 'selected' : ''}>${escapeHtml(t.full_name)}</option>`).join('')}
+          </select>
         </div>
-        <div class="form-group">
+        <div class="col-md-6">
+          <label class="form-label">Tanggal *</label>
+          <input type="date" class="form-control" id="sched-date" value="${existing?.schedule_date || today}" />
+        </div>
+        <div class="col-md-6">
           <label class="form-label">Kode Shift</label>
           <select class="form-select" id="sched-shift-code">
             <option value="">-- Pilih --</option>
             ${shiftMaster.map(sm => `<option value="${sm.kode}" ${(existing?.shift_code || existing?.shift) === sm.kode ? 'selected' : ''}>${sm.kode} — ${sm.label} (${sm.durasi_jam}h)</option>`).join('')}
           </select>
         </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Status</label>
-        <select class="form-select" id="sched-status">
-          ${Object.entries(SCHEDULE_STATUS).map(([k, v]) => `<option value="${k}" ${existing?.status === k ? 'selected' : ''}>${v.label}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Catatan</label>
-        <input class="form-input" id="sched-notes" value="${escapeHtml(existing?.notes || '')}" placeholder="Catatan opsional" />
+        <div class="col-12">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="sched-status">
+            ${Object.entries(SCHEDULE_STATUS).map(([k, v]) => `<option value="${k}" ${existing?.status === k ? 'selected' : ''}>${v.label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Catatan</label>
+          <input class="form-control" id="sched-notes" value="${escapeHtml(existing?.notes || '')}" placeholder="Catatan opsional" />
+        </div>
       </div>
     `,
     footer: `
-      <button class="btn btn-secondary" id="sched-cancel">Batal</button>
+      <button class="btn btn-outline-secondary" id="sched-cancel">Batal</button>
       <button class="btn btn-primary" id="sched-save">${isEdit ? 'Simpan' : 'Tambah Jadwal'}</button>
     `,
     onMount: (overlay, close) => {
@@ -1141,8 +1168,8 @@ function showCellModal(tech, dateStr, currentKode, key) {
   showModal({
     title: `Atur Jadwal — ${escapeHtml(tech?.full_name || '-')}`,
     body: `
-      <p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:var(--sp-4);">${dateFormatted}</p>
-      <div class="form-group">
+      <p class="text-muted small mb-4">${dateFormatted}</p>
+      <div class="mb-3">
         <label class="form-label">Kode Shift</label>
         <select class="form-select" id="cell-shift-code">
           <option value="">— Tidak Ada / Kosong —</option>
@@ -1151,8 +1178,8 @@ function showCellModal(tech, dateStr, currentKode, key) {
       </div>
     `,
     footer: `
-      <button class="btn btn-secondary" id="cell-cancel">Batal</button>
-      <button class="btn btn-danger btn-sm" id="cell-clear" style="margin-right:auto;">Hapus</button>
+      <button class="btn btn-outline-secondary" id="cell-cancel">Batal</button>
+      <button class="btn btn-outline-danger btn-sm me-auto" id="cell-clear">Hapus</button>
       <button class="btn btn-primary" id="cell-save">Simpan</button>
     `,
     onMount: (overlay, close) => {
@@ -1356,22 +1383,24 @@ async function renderShiftMasterPanel() {
           </div>
         `).join('')}
       </div>
-      <div style="background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:var(--sp-4);">
-        <h4 style="margin-bottom:var(--sp-3);font-size:var(--fs-sm);">Ringkasan Kode Shift</h4>
-        <div class="table-container" style="border:none">
-          <table class="data-table">
-            <thead><tr><th>Kode</th><th>Jam Kerja</th><th>Durasi</th><th>Tipe</th></tr></thead>
-            <tbody>
-              ${shiftMaster.map(sm => `
-                <tr>
-                  <td style="font-weight:var(--fw-bold);font-size:var(--fs-lg)">${escapeHtml(sm.kode)}</td>
-                  <td>${escapeHtml(sm.label)}</td>
-                  <td>${sm.durasi_jam} jam</td>
-                  <td>${sm.is_off ? badge('Libur', '#6B7280', 'rgba(107,114,128,0.12)') : badge('Kerja', '#8CC63F', 'rgba(140,198,63,0.12)')}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+      <div class="card bg-light border-0">
+        <div class="card-body">
+          <h6 class="card-title mb-3">Ringkasan Kode Shift</h6>
+          <div class="table-responsive">
+            <table class="table table-hover table-bordered bg-white mb-0">
+              <thead><tr><th>Kode</th><th>Jam Kerja</th><th>Durasi</th><th>Tipe</th></tr></thead>
+              <tbody>
+                ${shiftMaster.map(sm => `
+                  <tr>
+                    <td><span class="fw-bold fs-5">${escapeHtml(sm.kode)}</span></td>
+                    <td>${escapeHtml(sm.label)}</td>
+                    <td>${sm.durasi_jam} jam</td>
+                    <td>${sm.is_off ? badge('Libur', '#6B7280', 'rgba(107,114,128,0.12)') : badge('Kerja', '#8CC63F', 'rgba(140,198,63,0.12)')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     `;
@@ -1407,30 +1436,30 @@ function showShiftForm(existing = null) {
   showModal({
     title: isEdit ? `Edit Shift ${existing.kode}` : 'Tambah Kode Shift',
     body: `
-      <div class="form-row">
-        <div class="form-group">
+      <div class="row g-3">
+        <div class="col-md-6">
           <label class="form-label">Kode Shift *</label>
-          <input class="form-input" id="sm-kode" value="${escapeHtml(existing?.kode || '')}" placeholder="Mis: P1, S2, M" ${isEdit ? 'disabled' : ''} style="text-transform:uppercase;font-weight:var(--fw-bold);letter-spacing:0.05em;" />
-          <span style="font-size:var(--fs-xs);color:var(--text-muted)">Gunakan singkatan pendek (maks 4 karakter)</span>
+          <input class="form-control" id="sm-kode" value="${escapeHtml(existing?.kode || '')}" placeholder="Mis: P1, S2, M" ${isEdit ? 'disabled' : ''} style="text-transform:uppercase;font-weight:var(--fw-bold);letter-spacing:0.05em;" />
+          <div class="form-text">Gunakan singkatan pendek (maks 4 karakter)</div>
         </div>
-        <div class="form-group">
+        <div class="col-md-6">
           <label class="form-label">Durasi Jam *</label>
-          <input type="number" class="form-input" id="sm-durasi" value="${existing?.durasi_jam ?? ''}" placeholder="0" min="0" max="24" step="0.5" />
+          <input type="number" class="form-control" id="sm-durasi" value="${existing?.durasi_jam ?? ''}" placeholder="0" min="0" max="24" step="0.5" />
         </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Jam Kerja (Label)</label>
-        <input class="form-input" id="sm-label" value="${escapeHtml(existing?.label || '')}" placeholder="Mis: 07:00 – 15:00" />
-      </div>
-      <div class="form-group">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-          <input type="checkbox" class="form-checkbox" id="sm-isoff" ${existing?.is_off ? 'checked' : ''} />
-          <span>Kode ini adalah Libur / Off (0 jam)</span>
-        </label>
+        <div class="col-12">
+          <label class="form-label">Jam Kerja (Label)</label>
+          <input class="form-control" id="sm-label" value="${escapeHtml(existing?.label || '')}" placeholder="Mis: 07:00 – 15:00" />
+        </div>
+        <div class="col-12">
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="sm-isoff" ${existing?.is_off ? 'checked' : ''} />
+            <label class="form-check-label" for="sm-isoff">Kode ini adalah Libur / Off (0 jam)</label>
+          </div>
+        </div>
       </div>
     `,
     footer: `
-      <button class="btn btn-secondary" id="sm-cancel">Batal</button>
+      <button class="btn btn-outline-secondary" id="sm-cancel">Batal</button>
       <button class="btn btn-primary" id="sm-save">${isEdit ? 'Simpan' : 'Tambah'}</button>
     `,
     onMount: (overlay, close) => {

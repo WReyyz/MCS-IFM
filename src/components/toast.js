@@ -18,7 +18,7 @@ export function showToast(message, type = 'info', duration = 3000) {
   if (!container) return;
 
   const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
+  toast.className = `toast-custom toast-${type}`;
   toast.innerHTML = `
     ${ICON_MAP[type] || ICON_MAP.info}
     <span>${message}</span>

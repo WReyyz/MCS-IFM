@@ -20,20 +20,20 @@ export async function renderEquipment() {
       <div class="page-header">
         <h2>Daftar Equipment</h2>
         <div class="page-header-actions">
-          <button class="btn btn-primary" id="add-equip-btn">${icons.plus} Tambah Equipment</button>
+          <button class="btn btn-primary d-flex align-items-center gap-2" id="add-equip-btn">${icons.plus} <span>Tambah Equipment</span></button>
         </div>
       </div>
       <div class="toolbar">
         <div class="search-box">
           ${icons.search}
-          <input type="text" class="form-input" id="equip-search" placeholder="Cari equipment..." />
+          <input type="text" class="form-control form-control-sm" id="equip-search" placeholder="Cari equipment..." />
         </div>
         <div class="filter-group">
-          <select class="form-select" id="filter-status">
+          <select class="form-select form-select-sm" id="filter-status" style="min-width:150px">
             <option value="">Semua Kondisi</option>
             ${Object.entries(EQUIPMENT_STATUS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}
           </select>
-          <select class="form-select" id="filter-category">
+          <select class="form-select form-select-sm" id="filter-category" style="min-width:150px">
             <option value="">Semua Kategori</option>
             ${EQUIPMENT_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('')}
           </select>
@@ -46,18 +46,19 @@ export async function renderEquipment() {
       <!-- BULK ACTION BAR -->
       <div class="bulk-action-bar" id="bulk-action-bar">
         <div class="bulk-selected-count">
-          <span class="badge" id="bulk-count-badge">0</span> item terpilih
+          <span class="badge bg-warning text-dark" id="bulk-count-badge">0</span> item terpilih
         </div>
         <div class="bulk-actions">
-          <select class="form-select form-select-sm" id="bulk-status-select" style="min-width: 150px; padding-top: 4px; padding-bottom: 4px;">
+          <select class="form-select form-select-sm" id="bulk-status-select" style="min-width:150px">
             <option value="">Ubah Kondisi...</option>
             ${Object.entries(EQUIPMENT_STATUS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}
           </select>
-          <button class="btn btn-primary btn-sm" id="btn-bulk-update" style="padding: 4px 12px">Update</button>
+          <button class="btn btn-primary btn-sm" id="btn-bulk-update">Update</button>
         </div>
       </div>
     </div>
   `;
+
 
   document.getElementById('add-equip-btn').addEventListener('click', () => showEquipmentForm());
   document.getElementById('equip-search').addEventListener('input', debounce(filterAndRender));
@@ -148,19 +149,21 @@ function renderTable(data) {
 
   wrapper.innerHTML = `
     <div class="table-container">
-      <table class="data-table">
-        <thead><tr>
-          <th class="col-checkbox"><input type="checkbox" class="form-checkbox" id="select-all" /></th>
-          <th>ID SISTEM</th><th>NAMA EQUIPMENT</th><th>AREA</th><th>KATEGORI</th><th>NO INVENTORY</th><th>MANUFACTURE/VENDOR</th><th>TYPE</th><th>REQUIREMENTS</th><th>QR CODE</th><th>AKSI</th>
-        </tr></thead>
+      <table class="table table-hover table-bordered mb-0">
+        <thead>
+          <tr>
+            <th class="col-checkbox"><input type="checkbox" class="form-check-input" id="select-all" /></th>
+            <th>ID SISTEM</th><th>NAMA EQUIPMENT</th><th>AREA</th><th>KATEGORI</th><th>NO INVENTORY</th><th>MANUFACTURE/VENDOR</th><th>TYPE</th><th>REQUIREMENTS</th><th>QR CODE</th><th>AKSI</th>
+          </tr>
+        </thead>
         <tbody>
           ${data.map(e => {
             const reqCount = requirementCountsMap[e.idAset] || 0;
             return `
             <tr>
-              <td class="col-checkbox"><input type="checkbox" class="form-checkbox row-checkbox" value="${e.idAset}" ${selectedEquipmentIds.includes(e.idAset) ? 'checked' : ''} /></td>
+              <td class="col-checkbox"><input type="checkbox" class="form-check-input row-checkbox" value="${e.idAset}" ${selectedEquipmentIds.includes(e.idAset) ? 'checked' : ''} /></td>
               <td><span class="equipment-code">${escapeHtml(e.idAset)}</span></td>
-              <td style="font-weight: 600;">${escapeHtml(e.namaEquipment)}</td>
+              <td class="fw-semibold">${escapeHtml(e.namaEquipment)}</td>
               <td>${escapeHtml(e.area || '-')}</td>
               <td>${escapeHtml(e.kategori || '-')}</td>
               <td>${escapeHtml(e.noInventory || '-')}</td>
@@ -168,17 +171,17 @@ function renderTable(data) {
               <td>${escapeHtml(e.type || '-')}</td>
               <td>
                 ${reqCount > 0
-                  ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(23,59,99,0.12);color:var(--primary);border-radius:999px;padding:2px 10px;font-size:var(--fs-xs);font-weight:var(--fw-semibold)">${reqCount} req</span>`
-                  : `<span style="color:var(--text-muted);font-size:var(--fs-xs)">—</span>`}
+                  ? `<span class="badge" style="background:var(--mcs-info-bg);color:var(--mcs-info)">${reqCount} req</span>`
+                  : `<span class="text-muted" style="font-size:.7rem">—</span>`}
               </td>
               <td>
-                <button class="btn btn-ghost btn-icon btn-sm" data-qr="${e.idAset}" title="Show QR Code">${icons.qrCode}</button>
+                <button class="btn btn-outline-secondary btn-sm btn-icon" data-qr="${e.idAset}" title="Show QR Code">${icons.qrCode}</button>
               </td>
               <td>
                 <div class="table-actions">
-                  <button class="btn btn-ghost btn-sm" data-history="${e.idAset}" style="font-size: 0.8rem; display: flex; align-items: center; gap: 4px;" title="History">${icons.clock} HISTORY</button>
-                  <button class="btn btn-ghost btn-icon btn-sm" data-edit="${e.idAset}" title="Edit" style="color: var(--warning);">${icons.edit}</button>
-                  <button class="btn btn-ghost btn-icon btn-sm" data-delete="${e.idAset}" title="Hapus" style="color: var(--danger);">${icons.trash}</button>
+                  <button class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" data-history="${e.idAset}" title="History">${icons.clock} HISTORY</button>
+                  <button class="btn btn-outline-warning btn-sm btn-icon" data-edit="${e.idAset}" title="Edit">${icons.edit}</button>
+                  <button class="btn btn-outline-danger btn-sm btn-icon" data-delete="${e.idAset}" title="Hapus">${icons.trash}</button>
                 </div>
               </td>
             </tr>
@@ -187,6 +190,7 @@ function renderTable(data) {
       </table>
     </div>
   `;
+
 
   // Setup bulk selection helper
   setupBulkSelection(wrapper, (selected) => {
@@ -249,67 +253,61 @@ async function showEquipmentForm(existing = null) {
     title: isEdit ? 'Edit Equipment' : 'Tambah Equipment',
     size: 'modal-lg',
     body: `
-      <div class="form-row">
-        <div class="form-group">
+      <div class="row g-3">
+        <div class="col-6">
           <label class="form-label">ID Asset *</label>
-          <input class="form-input" id="eq-idasset" value="${existing?.idAset || ''}" placeholder="ID Asset" required ${isEdit ? 'disabled' : ''} />
+          <input class="form-control" id="eq-idasset" value="${existing?.idAset || ''}" placeholder="ID Asset" required ${isEdit ? 'disabled' : ''} />
         </div>
-        <div class="form-group">
+        <div class="col-6">
           <label class="form-label">Nama Equipment *</label>
-          <input class="form-input" id="eq-name" value="${existing?.namaEquipment || ''}" placeholder="Nama equipment" required />
+          <input class="form-control" id="eq-name" value="${existing?.namaEquipment || ''}" placeholder="Nama equipment" required />
         </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
+        <div class="col-6">
           <label class="form-label">No Inventory</label>
-          <input class="form-input" id="eq-inventory" value="${existing?.noInventory || ''}" placeholder="No Inventory" />
+          <input class="form-control" id="eq-inventory" value="${existing?.noInventory || ''}" placeholder="No Inventory" />
         </div>
-        <div class="form-group">
+        <div class="col-6">
           <label class="form-label">Kategori</label>
           <select class="form-select" id="eq-category">
             <option value="">Pilih Kategori</option>
             ${EQUIPMENT_CATEGORIES.map(c => `<option value="${c}" ${existing?.kategori === c ? 'selected' : ''}>${c}</option>`).join('')}
           </select>
         </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
+        <div class="col-6">
           <label class="form-label">Area</label>
-          <input class="form-input" id="eq-location" value="${existing?.area || ''}" placeholder="Area/lokasi" />
+          <input class="form-control" id="eq-location" value="${existing?.area || ''}" placeholder="Area/lokasi" />
         </div>
-        <div class="form-group">
+        <div class="col-6">
           <label class="form-label">Kondisi</label>
           <select class="form-select" id="eq-status">
             ${Object.entries(EQUIPMENT_STATUS).map(([k, v]) => `<option value="${k}" ${existing?.kondisi === k ? 'selected' : ''}>${v.label}</option>`).join('')}
           </select>
         </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
+        <div class="col-6">
           <label class="form-label">Manufaktur</label>
-          <input class="form-input" id="eq-manufacturer" value="${existing?.manuf || ''}" placeholder="Nama pabrikan" />
+          <input class="form-control" id="eq-manufacturer" value="${existing?.manuf || ''}" placeholder="Nama pabrikan" />
         </div>
-        <div class="form-group">
+        <div class="col-6">
           <label class="form-label">Tipe/Model</label>
-          <input class="form-input" id="eq-model" value="${existing?.type || ''}" placeholder="Tipe" />
+          <input class="form-control" id="eq-model" value="${existing?.type || ''}" placeholder="Tipe" />
         </div>
       </div>
 
-      <hr style="margin: var(--sp-4) 0; border: none; border-top: 1px solid var(--border-color);" />
-      <h4 style="margin-bottom:var(--sp-1);display:flex;align-items:center;gap:8px;">
+      <hr class="my-3" />
+      <h6 class="mb-1 d-flex align-items-center gap-2">
         ${icons.clipboardList} Maintenance Requirements
-        <span style="font-size:var(--fs-xs);color:var(--text-muted);font-weight:normal">Kebutuhan jam per siklus pemeliharaan — sumber Load Man Hours</span>
-      </h4>
-      <div id="req-container" style="margin-bottom: var(--sp-2);"></div>
-      <button class="btn btn-secondary btn-sm" id="btn-add-req">${icons.plus} Tambah Requirement</button>
+        <small class="text-muted fw-normal">Kebutuhan jam per siklus pemeliharaan</small>
+      </h6>
+      <div id="req-container" class="mb-2"></div>
+      <button class="btn btn-outline-secondary btn-sm" id="btn-add-req">${icons.plus} Tambah Requirement</button>
 
-      <hr style="margin: var(--sp-4) 0; border: none; border-top: 1px solid var(--border-color);" />
-      <h4 style="margin-bottom: var(--sp-2);">Checklist Tasks</h4>
-      <div id="checklist-container" style="margin-bottom: var(--sp-2);"></div>
-      <button class="btn btn-secondary btn-sm" id="btn-add-checklist" style="margin-bottom: var(--sp-2);">${icons.plus} Tambah Task</button>
+      <hr class="my-3" />
+      <h6 class="mb-2">Checklist Tasks</h6>
+      <div id="checklist-container" class="mb-2"></div>
+      <button class="btn btn-outline-secondary btn-sm" id="btn-add-checklist">${icons.plus} Tambah Task</button>
     `,
     footer: `
-      <button class="btn btn-secondary" id="eq-cancel">Batal</button>
+      <button class="btn btn-outline-secondary" id="eq-cancel">Batal</button>
       <button class="btn btn-primary" id="eq-save">${isEdit ? 'Simpan Perubahan' : 'Tambah Equipment'}</button>
     `,
     onMount: (overlay, close) => {
@@ -325,23 +323,24 @@ async function showEquipmentForm(existing = null) {
           return;
         }
         reqContainer.innerHTML = reqItems.map((r, idx) => `
-          <div class="form-row" style="align-items:flex-end;gap:8px;margin-bottom:8px;padding:var(--sp-3);background:var(--bg-base);border-radius:var(--radius-md);border:1px solid var(--border-color);">
-            <div class="form-group" style="flex:1;min-width:110px;">
-              <label class="form-label">Interval</label>
+          <div class="row g-2 mb-2 p-2 bg-light border rounded align-items-end">
+            <div class="col-auto flex-grow-1">
+              <label class="form-label small">Interval</label>
               <select class="form-select" data-req-idx="${idx}" data-req-field="interval_type">
                 ${Object.entries(INTERVAL_TYPES).map(([k, v]) => `<option value="${k}" ${r.interval_type === k ? 'selected' : ''}>${v.label}</option>`).join('')}
               </select>
             </div>
-            <div class="form-group req-custom-days" style="flex:0 0 90px;${r.interval_type !== 'custom' ? 'display:none' : ''}">
-              <label class="form-label">Setiap (hari)</label>
-              <input type="number" class="form-input" data-req-idx="${idx}" data-req-field="interval_days" value="${r.interval_days || ''}" placeholder="30" min="1" />
+            <div class="col-auto req-custom-days" style="width:100px;${r.interval_type !== 'custom' ? 'display:none' : ''}">
+              <label class="form-label small">Hari</label>
+              <input type="number" class="form-control" data-req-idx="${idx}" data-req-field="interval_days" value="${r.interval_days || ''}" placeholder="30" min="1" />
             </div>
-            <div class="form-group" style="flex:0 0 100px;">
-              <label class="form-label">Man Hours</label>
-              <input type="number" class="form-input" data-req-idx="${idx}" data-req-field="man_hours" value="${r.man_hours || ''}" placeholder="jam" min="0" step="0.5" />
+            <div class="col-auto" style="width:100px;">
+              <label class="form-label small">Man Hrs</label>
+              <input type="number" class="form-control" data-req-idx="${idx}" data-req-field="man_hours" value="${r.man_hours || ''}" placeholder="jam" min="0" step="0.5" />
             </div>
-
-            <button class="btn btn-ghost btn-icon btn-sm btn-del-req" data-req-idx="${idx}" style="color:var(--danger);margin-bottom:2px">${icons.trash}</button>
+            <div class="col-auto">
+              <button class="btn btn-outline-danger btn-sm btn-del-req" data-req-idx="${idx}">${icons.trash}</button>
+            </div>
           </div>
         `).join('');
 
@@ -354,7 +353,7 @@ async function showEquipmentForm(existing = null) {
             const field = e.target.dataset.reqField;
             reqItems[idx][field] = e.target.value;
             if (field === 'interval_type') {
-              const row = e.target.closest('.form-row');
+              const row = e.target.closest('.row');
               const customGroup = row?.querySelector('.req-custom-days');
               if (customGroup) customGroup.style.display = e.target.value === 'custom' ? '' : 'none';
             }
@@ -394,14 +393,14 @@ async function showEquipmentForm(existing = null) {
           return;
         }
         checklistContainer.innerHTML = checklistItems.map((item, index) => `
-          <div class="form-row" style="align-items: center; gap: 8px; margin-bottom: 8px;">
-            <input type="text" class="form-input" value="${escapeHtml(item.task || '')}" data-index="${index}" data-field="task" style="flex:2" placeholder="Nama Task" />
-            <select class="form-select" data-index="${index}" data-field="type" style="flex:1">
+          <div class="d-flex gap-2 mb-2 align-items-center">
+            <input type="text" class="form-control flex-grow-1" value="${escapeHtml(item.task || '')}" data-index="${index}" data-field="task" placeholder="Nama Task" />
+            <select class="form-select w-auto" data-index="${index}" data-field="type">
               <option value="boolean" ${item.type === 'boolean' ? 'selected' : ''}>Ya/Tidak</option>
               <option value="number" ${item.type === 'number' ? 'selected' : ''}>Input Angka</option>
               <option value="image" ${item.type === 'image' ? 'selected' : ''}>Upload Foto</option>
             </select>
-            <button class="btn btn-ghost btn-icon btn-sm btn-del-task" data-index="${index}" style="color:var(--danger)">${icons.trash}</button>
+            <button class="btn btn-outline-danger btn-sm btn-del-task" data-index="${index}">${icons.trash}</button>
           </div>
         `).join('');
         
@@ -531,47 +530,61 @@ async function showHistory(idAset) {
       title: 'Asset Detail & History Timeline',
       size: 'modal-lg',
       body: `
-        <div style="margin-bottom: 24px;">
-          <p style="color: var(--success); font-weight: 600; margin-bottom: 16px;">ID ASET: ${equip.idAset} | ${equip.namaEquipment}</p>
-          <div style="display: flex; gap: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 16px; border-radius: 8px;">
-            <div style="flex: 1;">
-              <div style="font-size: 0.8rem; color: var(--text-secondary);">Pabrikan</div>
-              <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px;">${equip.manuf || '-'}</div>
+        <div class="mb-4">
+          <p class="text-success fw-bold mb-3">ID ASET: ${equip.idAset} | ${equip.namaEquipment}</p>
+          <div class="row g-3 mb-3">
+            <div class="col-md-3 col-6">
+              <div class="p-3 bg-light border rounded h-100">
+                <div class="small text-muted">Pabrikan</div>
+                <div class="fw-bold mt-1 text-dark">${equip.manuf || '-'}</div>
+              </div>
             </div>
-            <div style="flex: 1;">
-              <div style="font-size: 0.8rem; color: var(--text-secondary);">Tipe</div>
-              <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px;">${equip.type || '-'}</div>
+            <div class="col-md-3 col-6">
+              <div class="p-3 bg-light border rounded h-100">
+                <div class="small text-muted">Tipe</div>
+                <div class="fw-bold mt-1 text-dark">${equip.type || '-'}</div>
+              </div>
             </div>
-            <div style="flex: 1;">
-              <div style="font-size: 0.8rem; color: var(--text-secondary);">Area</div>
-              <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px;">${equip.area || '-'}</div>
+            <div class="col-md-3 col-6">
+              <div class="p-3 bg-light border rounded h-100">
+                <div class="small text-muted">Area</div>
+                <div class="fw-bold mt-1 text-dark">${equip.area || '-'}</div>
+              </div>
             </div>
-            <div style="flex: 1;">
-              <div style="font-size: 0.8rem; color: var(--text-secondary);">No Inventory</div>
-              <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px;">${equip.noInventory || '-'}</div>
+            <div class="col-md-3 col-6">
+              <div class="p-3 bg-light border rounded h-100">
+                <div class="small text-muted">No Inventory</div>
+                <div class="fw-bold mt-1 text-dark">${equip.noInventory || '-'}</div>
+              </div>
             </div>
           </div>
           
-          <div style="display: flex; gap: 16px; margin-top: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 16px; border-radius: 8px; text-align: center;">
-             <div style="flex: 1;">
-              <div style="font-size: 0.8rem; color: var(--text-secondary);">WO SELESAI</div>
-              <div style="font-weight: 600; font-size: 1.2rem; color: var(--text-primary); margin-top: 4px;">${woSelesai}</div>
+          <div class="row g-3 text-center">
+             <div class="col-md-4">
+               <div class="p-3 bg-light border rounded h-100">
+                <div class="small text-muted fw-bold">WO SELESAI</div>
+                <div class="fs-4 fw-bold text-dark mt-1">${woSelesai}</div>
+               </div>
             </div>
-            <div style="flex: 1;">
-              <div style="font-size: 0.8rem; color: var(--text-secondary);">DOWNTIME</div>
-              <div style="font-weight: 600; font-size: 1.2rem; color: var(--danger); margin-top: 4px;">${totalDowntime} Jam</div>
+            <div class="col-md-4">
+               <div class="p-3 bg-light border rounded h-100">
+                <div class="small text-muted fw-bold">DOWNTIME</div>
+                <div class="fs-4 fw-bold text-danger mt-1">${totalDowntime} Jam</div>
+               </div>
             </div>
-            <div style="flex: 1;">
-              <div style="font-size: 0.8rem; color: var(--text-secondary);">BIAYA MAINT.</div>
-              <div style="font-weight: 600; font-size: 1.2rem; color: var(--success); margin-top: 4px;">IDR 0</div>
+            <div class="col-md-4">
+               <div class="p-3 bg-light border rounded h-100">
+                <div class="small text-muted fw-bold">BIAYA MAINT.</div>
+                <div class="fs-4 fw-bold text-success mt-1">IDR 0</div>
+               </div>
             </div>
           </div>
         </div>
         
-        <h4 style="margin-bottom: 12px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; color: var(--text-secondary);">${icons.activity} REKAMAN LOG KEJADIAN</h4>
-        <div class="table-container" style="max-height: 250px; overflow-y: auto;">
-          <table class="data-table">
-            <thead>
+        <h6 class="mb-3 d-flex align-items-center gap-2 text-secondary fw-bold">${icons.activity} REKAMAN LOG KEJADIAN</h6>
+        <div class="table-responsive" style="max-height: 250px;">
+          <table class="table table-hover table-bordered mb-0">
+            <thead class="table-light">
               <tr>
                 <th>TANGGAL</th>
                 <th>JENIS</th>

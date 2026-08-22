@@ -43,7 +43,7 @@ export function renderSidebar(container) {
           <div class="sidebar-user-role" id="sidebar-user-role">-</div>
         </div>
       </div>
-      <button class="btn btn-ghost btn-sm" id="logout-btn" style="width:100%;margin-top:var(--sp-2);justify-content:center">
+      <button class="btn btn-outline-secondary btn-sm w-100 d-flex align-items-center justify-content-center gap-2" id="logout-btn">
         ${icons.logOut}
         <span>Keluar</span>
       </button>
