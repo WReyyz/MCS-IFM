@@ -20,8 +20,8 @@ export async function renderTechProfile() {
 
 function renderProfileContent(content, profile, history) {
   const avatarContent = profile?.avatar_url
-    ? `<img src="${profile.avatar_url}" alt="avatar" />`
-    : `<span>${(profile?.full_name || 'T').charAt(0).toUpperCase()}</span>`;
+    ? `<img src="${profile.avatar_url}" alt="avatar" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:1;" />`
+    : `<span style="position:relative;z-index:1;">${(profile?.full_name || 'T').charAt(0).toUpperCase()}</span>`;
 
   const historyHtml = history.length === 0
     ? `<div class="tech-empty" style="padding:var(--sp-5) 0">${icons.history}<p>Belum ada WO yang diselesaikan</p></div>`
@@ -47,7 +47,7 @@ function renderProfileContent(content, profile, history) {
     <div class="text-center mb-4 pt-3">
       <div class="tech-profile-avatar mx-auto mb-3" id="avatar-trigger" style="width:80px;height:80px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-size:2rem;position:relative;cursor:pointer;overflow:hidden;">
         ${avatarContent}
-        <div class="tech-profile-avatar-overlay" style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.5);color:white;font-size:1rem;padding:4px 0;text-align:center;">${icons.camera}</div>
+        <div class="tech-profile-avatar-overlay" style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.5);color:white;font-size:1rem;padding:4px 0;text-align:center;z-index:2;">${icons.camera}</div>
       </div>
       <input type="file" id="avatar-input" accept="image/*" style="display:none" />
       <h4 class="mb-1 text-dark fw-bold">${escapeHtml(profile?.full_name || 'Teknisi')}</h4>

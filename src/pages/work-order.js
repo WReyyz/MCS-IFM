@@ -30,7 +30,10 @@ export async function renderWorkOrder() {
       <div class="page-header">
         <h2>Work Order</h2>
         <div class="page-header-actions">
-          ${isAdmin ? `<button class="btn btn-primary d-flex align-items-center gap-2" id="add-wo-btn">${icons.plus} <span>Buat Work Order</span></button>` : ''}
+          ${isAdmin ? `
+            <button class="btn btn-outline-success d-flex align-items-center gap-2" id="export-excel-btn">${icons.download} <span>Export Excel</span></button>
+            <button class="btn btn-primary d-flex align-items-center gap-2" id="add-wo-btn">${icons.plus} <span>Buat Work Order</span></button>
+          ` : ''}
         </div>
       </div>
       <div class="toolbar">
@@ -78,6 +81,7 @@ export async function renderWorkOrder() {
 
   if (isAdmin) {
     document.getElementById('add-wo-btn').addEventListener('click', () => showWOForm());
+    document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
     document.getElementById('btn-bulk-update')?.addEventListener('click', handleBulkUpdate);
   }
 
@@ -762,4 +766,111 @@ function showHoldForm(wo) {
       });
     }
   });
+}
+
+// ---- EXPORT EXCEL ----
+async function exportToExcel() {
+  try {
+    const btn = document.getElementById('export-excel-btn');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Mengekspor...';
+    btn.disabled = true;
+
+    const ExcelJS = (await import('exceljs')).default;
+    const { saveAs } = await import('file-saver');
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Work Orders');
+
+    worksheet.columns = [
+      { header: 'No. WO', key: 'wo_number', width: 20 },
+      { header: 'Kategori', key: 'category', width: 15 },
+      { header: 'Prioritas', key: 'priority', width: 15 },
+      { header: 'Status', key: 'status', width: 15 },
+      { header: 'Teknisi', key: 'technician', width: 25 },
+      { header: 'Tgl Dibuka', key: 'opened_at', width: 20 },
+      { header: 'Tgl Ditutup', key: 'closed_at', width: 20 },
+      { header: 'Est. Jam', key: 'est_hours', width: 10 },
+      { header: 'Act. Jam', key: 'act_hours', width: 10 },
+      { header: 'Deskripsi', key: 'description', width: 40 },
+      { header: 'Catatan', key: 'notes', width: 40 },
+      { header: 'Foto Problem', key: 'problem_photo', width: 25 },
+      { header: 'Foto Evidence', key: 'evidence_photo', width: 25 },
+    ];
+
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+    for (let i = 0; i < allWOs.length; i++) {
+      const wo = allWOs[i];
+      const rowNum = i + 2;
+      
+      const row = worksheet.addRow({
+        wo_number: wo.wo_number,
+        category: WO_CATEGORY[wo.category]?.label || wo.category,
+        priority: WO_PRIORITY[wo.priority]?.label || wo.priority,
+        status: WO_STATUS[wo.status]?.label || wo.status,
+        technician: wo.profiles?.full_name || '-',
+        opened_at: formatDate(wo.opened_at),
+        closed_at: wo.closed_at ? formatDate(wo.closed_at) : '-',
+        est_hours: wo.man_hours_estimated || 0,
+        act_hours: wo.man_hours_actual || 0,
+        description: wo.description || '-',
+        notes: wo.notes || '-',
+      });
+
+      row.alignment = { vertical: 'top', wrapText: true };
+
+      let hasImage = false;
+
+      const addBase64Image = (base64Str, colIndex) => {
+        if (!base64Str || !base64Str.startsWith('data:image')) return false;
+        try {
+          const parts = base64Str.split(';');
+          if (parts.length !== 2) return false;
+          const mime = parts[0].split(':')[1];
+          let ext = 'png';
+          if (mime === 'image/jpeg') ext = 'jpeg';
+          
+          const imageId = workbook.addImage({
+            base64: base64Str,
+            extension: ext,
+          });
+          
+          worksheet.addImage(imageId, {
+            tl: { col: colIndex, row: rowNum - 1 },
+            ext: { width: 140, height: 140 }
+          });
+          return true;
+        } catch (e) {
+          console.error('Failed to parse image', e);
+          return false;
+        }
+      };
+
+      if (addBase64Image(wo.problem_photo_url, 11)) hasImage = true;
+      if (addBase64Image(wo.evidence_url, 12)) hasImage = true;
+
+      if (hasImage) {
+        row.height = 110; 
+      } else {
+        row.height = 30;
+      }
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `Export_WO_Corrective_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+    btn.innerHTML = originalHtml;
+    btn.disabled = false;
+    showToast('Export Excel berhasil!', 'success');
+  } catch (err) {
+    console.error(err);
+    showToast('Gagal export excel', 'error');
+    const btn = document.getElementById('export-excel-btn');
+    if (btn) {
+      btn.innerHTML = `${icons.download} <span>Export Excel</span>`;
+      btn.disabled = false;
+    }
+  }
 }

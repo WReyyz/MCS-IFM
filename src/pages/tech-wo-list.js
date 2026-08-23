@@ -2,7 +2,7 @@ import { renderTechShell } from '../components/tech-shell.js';
 import { icons } from '../components/icons.js';
 import { showModal } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
-import { fetchAll, updateRow } from '../lib/supabase.js';
+import { fetchAll, updateRow, supabase } from '../lib/supabase.js';
 import { WO_STATUS, WO_PRIORITY, WO_CATEGORY } from '../utils/constants.js';
 import { formatDate, badge, escapeHtml } from '../utils/helpers.js';
 
@@ -17,12 +17,15 @@ export async function renderTechWoList() {
   try {
     const today = new Date().toISOString().split('T')[0];
 
-    // Fetch all WOs assigned to this technician
-    const allWOs = await fetchAll('work_orders', {
-      select: '*, equipment(namaEquipment, idAset)',
-      filters: [{ column: 'assigned_to', value: currentProfile.id }],
-      order: { column: 'opened_at', ascending: true }
-    });
+    // Fetch WOs assigned to this tech, OR unassigned corrective WOs
+    const { data: allWOsData, error } = await supabase
+      .from('work_orders')
+      .select('*, equipment(namaEquipment, idAset), profiles:requested_by(full_name)')
+      .or(`assigned_to.eq.${currentProfile.id},and(assigned_to.is.null,type.eq.corrective)`)
+      .order('opened_at', { ascending: true });
+
+    if (error) throw error;
+    const allWOs = allWOsData || [];
 
     // WO Preventive scheduled for today
     const preventiveToday = allWOs.filter(wo =>
@@ -53,6 +56,7 @@ function renderWOCard(wo) {
   const today = new Date().toISOString().split('T')[0];
   const openedDate = wo.opened_at?.split('T')[0];
   const isOverdue = wo.status !== 'closed' && openedDate && openedDate < today;
+  const creatorName = wo.profiles?.full_name || 'Admin';
 
   let borderColor = wo.type === 'preventive' ? 'border-success' : 'border-warning';
   
@@ -72,6 +76,7 @@ function renderWOCard(wo) {
         <div class="d-flex flex-wrap gap-2 mt-2 small text-secondary align-items-center">
           <span class="d-flex align-items-center gap-1">${icons.clock} ${formatDate(wo.opened_at)}</span>
           <span class="d-flex align-items-center gap-1">${icons.wrench} ${cat.label}</span>
+          <span class="d-flex align-items-center gap-1" title="Dibuat oleh">${icons.user} ${escapeHtml(creatorName)}</span>
           <span>${badge(priorityInfo.label || wo.priority, priorityInfo.color, priorityInfo.bg)}</span>
           ${isOverdue ? `<span class="badge bg-danger text-white px-2 py-1">OVERDUE</span>` : ''}
           ${equipName !== '-' ? `<span class="d-flex align-items-center gap-1 text-truncate" style="max-width: 140px;">${icons.cpu} ${escapeHtml(equipName)}</span>` : ''}
@@ -137,6 +142,7 @@ function showWODetail(wo) {
   const priorityInfo = WO_PRIORITY[wo.priority] || {};
   const cat = WO_CATEGORY[wo.category] || WO_CATEGORY.OTHER;
   const equipName = wo.equipment?.namaEquipment || wo.equipment_id || '-';
+  const creatorName = wo.profiles?.full_name || 'Admin';
   const canClose = wo.status === 'open' || wo.status === 'hold';
 
   showModal({
@@ -180,7 +186,19 @@ function showWODetail(wo) {
               <div class="small text-dark mt-1">${formatDate(wo.opened_at)}</div>
             </div>
           </div>
+          <div class="col-6">
+            <div class="bg-light border rounded p-3 h-100">
+              <div class="small text-muted">Dibuat Oleh</div>
+              <div class="small text-dark mt-1">${escapeHtml(creatorName)}</div>
+            </div>
+          </div>
         </div>
+
+        ${wo.problem_photo_url ? `
+        <div class="bg-light border rounded p-3">
+          <div class="small text-secondary mb-2">Foto Detail / Lokasi</div>
+          <img src="${wo.problem_photo_url}" class="img-fluid rounded border" style="max-height: 240px; width: 100%; object-fit: cover;" alt="Problem Photo" />
+        </div>` : ''}
 
         ${wo.notes ? `
         <div class="bg-light border rounded p-3">
@@ -297,6 +315,7 @@ function showCloseWOForm(wo) {
         try {
           await updateRow('work_orders', wo.id, {
             status: 'closed',
+            assigned_to: currentProfile.id, // Set assignee to tech who closed it
             man_hours_actual: hours,
             started_at: new Date(startEl.value).toISOString(),
             closed_at: new Date(finishEl.value).toISOString(),
