@@ -261,12 +261,12 @@ export async function getNotifications() {
   return data || [];
 }
 
-export async function sendNotification(title, body) {
+export async function sendNotification(title, body, image_url = null) {
   const user = await getCurrentUser();
   if (!user) throw new Error('Not authenticated');
   const { data, error } = await supabase
     .from('technician_notifications')
-    .insert({ title, body, created_by: user.id })
+    .insert({ title, body, image_url, created_by: user.id })
     .select()
     .single();
   if (error) throw error;

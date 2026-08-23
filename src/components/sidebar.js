@@ -10,6 +10,7 @@ const ALL_MENU_ITEMS = [
   { path: '/preventive-maintenance', label: 'Preventive Maintenance', icon: 'calendarCheck' },
   { path: '/work-order', label: 'Work Order', icon: 'clipboardList' },
   { path: '/material-stock', label: 'Stok Material', icon: 'package' },
+  { path: '/tools', label: 'Tools', icon: 'wrench' },
   { path: '/plan', label: 'Plan', icon: 'ganttChart' },
   { section: 'MANAJEMEN', adminOnly: true },
   { path: '/technician', label: 'Jadwal & Teknisi', icon: 'calendarCheck', adminOnly: true },

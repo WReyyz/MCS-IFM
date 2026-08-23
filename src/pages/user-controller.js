@@ -61,14 +61,15 @@ export async function renderUserController() {
             <div class="bulk-selected-count">
               <span class="badge bg-primary" id="bulk-count-badge">0</span> item terpilih
             </div>
-            <div class="bulk-actions d-flex gap-2 align-items-center">
-              <select class="form-select form-select-sm" id="bulk-status-select" style="min-width:150px;">
-                <option value="">Ubah Status...</option>
-                <option value="true">Aktif</option>
-                <option value="false">Non-Aktif</option>
-              </select>
-              <button class="btn btn-primary btn-sm" id="btn-bulk-update">Update</button>
-            </div>
+              <div class="bulk-actions d-flex gap-2 align-items-center">
+                <select class="form-select form-select-sm" id="bulk-status-select" style="min-width:150px;">
+                  <option value="">Ubah Status...</option>
+                  <option value="true">Aktif</option>
+                  <option value="false">Non-Aktif</option>
+                </select>
+                <button class="btn btn-primary btn-sm" id="btn-bulk-update">Update</button>
+                <button class="btn btn-danger btn-sm" id="btn-bulk-delete" title="Hapus Pengguna Terpilih">${icons.trash || 'Hapus'}</button>
+              </div>
           </div>
         </div>
 
@@ -182,6 +183,7 @@ async function initUserController() {
   // ---- List tab actions ----
   document.getElementById('add-user-btn').addEventListener('click', () => showUserForm());
   document.getElementById('btn-bulk-update').addEventListener('click', handleBulkUpdate);
+  document.getElementById('btn-bulk-delete').addEventListener('click', handleBulkDelete);
 
   // ---- Register form ----
   document.getElementById('uc-reg-form').addEventListener('submit', handleRegister);
@@ -342,6 +344,25 @@ async function handleBulkUpdate() {
         await loadUsers();
       } catch (err) {
         showToast('Gagal update massal', 'error');
+      }
+    }
+  });
+}
+
+async function handleBulkDelete() {
+  if (selectedUserIds.length === 0) return;
+  showConfirm({
+    message: `Hapus ${selectedUserIds.length} pengguna secara permanen? Tindakan ini tidak dapat dibatalkan.`,
+    onConfirm: async () => {
+      try {
+        const { error } = await supabase.from('profiles').delete().in('id', selectedUserIds);
+        if (error) throw error;
+        showToast('Berhasil menghapus pengguna', 'success');
+        selectedUserIds = [];
+        updateBulkBar();
+        await loadUsers();
+      } catch (err) {
+        showToast('Gagal menghapus pengguna', 'error');
       }
     }
   });

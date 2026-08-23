@@ -2,7 +2,7 @@ import { renderAppShell } from '../components/app-shell.js';
 import { icons } from '../components/icons.js';
 import { showModal, showConfirm } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
-import { fetchAll, insertRow, updateRow, deleteRow, bulkUpdateRows, getCurrentProfile, fetchById } from '../lib/supabase.js';
+import { fetchAll, insertRow, updateRow, deleteRow, bulkUpdateRows, getCurrentProfile, fetchById, supabase } from '../lib/supabase.js';
 import { WO_STATUS, WO_PRIORITY, WO_CATEGORY } from '../utils/constants.js';
 import { formatDate, formatDateTime, debounce, escapeHtml, badge, generateWoNumber, setupBulkSelection } from '../utils/helpers.js';
 
@@ -66,12 +66,13 @@ export async function renderWorkOrder() {
         <div class="bulk-selected-count">
           <span class="badge bg-warning text-dark" id="bulk-count-badge">0</span> item terpilih
         </div>
-        <div class="bulk-actions">
+        <div class="bulk-actions d-flex gap-2">
           <select class="form-select form-select-sm" id="bulk-status-select" style="min-width:150px">
             <option value="">Ubah Status...</option>
             ${Object.entries(WO_STATUS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}
           </select>
           <button class="btn btn-primary btn-sm" id="btn-bulk-update">Update</button>
+          <button class="btn btn-danger btn-sm d-flex align-items-center gap-1" id="btn-bulk-delete">${icons.trash} Hapus</button>
         </div>
       </div>
       ` : ''}
@@ -83,6 +84,7 @@ export async function renderWorkOrder() {
     document.getElementById('add-wo-btn').addEventListener('click', () => showWOForm());
     document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
     document.getElementById('btn-bulk-update')?.addEventListener('click', handleBulkUpdate);
+    document.getElementById('btn-bulk-delete')?.addEventListener('click', handleBulkDelete);
   }
 
   document.getElementById('wo-search').addEventListener('input', debounce(filterAndRender));
@@ -115,6 +117,27 @@ async function handleBulkUpdate() {
   });
 }
 
+async function handleBulkDelete() {
+  if (selectedWOIds.length === 0) return;
+
+  showConfirm({
+    message: `Apakah Anda yakin ingin menghapus ${selectedWOIds.length} Work Order yang dipilih? Tindakan ini tidak dapat dibatalkan.`,
+    onConfirm: async () => {
+      try {
+        const { error } = await supabase.from('work_orders').delete().in('id', selectedWOIds);
+        if (error) throw error;
+        
+        showToast('Berhasil menghapus WO terpilih', 'success');
+        selectedWOIds = [];
+        updateBulkBar();
+        await loadWOs();
+      } catch (err) {
+        showToast('Gagal menghapus massal', 'error');
+      }
+    }
+  });
+}
+
 function updateBulkBar() {
   const bar = document.getElementById('bulk-action-bar');
   const badgeEl = document.getElementById('bulk-count-badge');
@@ -133,7 +156,7 @@ async function loadWOs() {
 
     // Build fetch options
     const woOptions = {
-      select: '*, profiles:assigned_to(full_name)',
+      select: '*, assignee:profiles!assigned_to(full_name), creator:profiles!requested_by(full_name)',
       order: { column: 'created_at', ascending: false },
       filters: [{ column: 'type', value: 'corrective' }] // Hanya tampilkan corrective di menu ini
     };
@@ -187,7 +210,7 @@ function renderTable(data) {
         <thead>
           <tr>
             ${isAdmin ? '<th class="col-checkbox"><input type="checkbox" class="form-check-input" id="select-all" /></th>' : ''}
-            <th>No. WO</th><th>Kategori</th><th>Prioritas</th><th>Status</th><th>Teknisi</th><th>Jam</th><th>Evidence</th><th>Tanggal</th><th>Aksi</th>
+            <th>No. WO</th><th>Kategori</th><th>Prioritas</th><th>Status</th><th>Dibuat Oleh</th><th>Tgl Buat</th><th>Di-close Oleh</th><th>Tgl Close</th><th>Jam</th><th>Evidence</th><th>Aksi</th>
           </tr>
         </thead>
         <tbody>
@@ -200,10 +223,12 @@ function renderTable(data) {
               <td>${badge(cat.label, cat.color, cat.bg)}</td>
               <td>${badge(WO_PRIORITY[wo.priority]?.label, WO_PRIORITY[wo.priority]?.color, WO_PRIORITY[wo.priority]?.bg)}</td>
               <td>${badge(WO_STATUS[wo.status]?.label, WO_STATUS[wo.status]?.color, WO_STATUS[wo.status]?.bg)}</td>
-              <td>${wo.profiles?.full_name || '-'}</td>
+              <td>${wo.creator?.full_name || 'Admin'}</td>
+              <td>${formatDate(wo.opened_at)}</td>
+              <td>${wo.status === 'closed' ? (wo.assignee?.full_name || '-') : '-'}</td>
+              <td>${wo.closed_at ? formatDate(wo.closed_at) : '-'}</td>
               <td><small class="text-muted">${wo.man_hours_estimated || 0}h est</small> <span class="wo-man-hours">${wo.man_hours_actual || 0}h</span></td>
               <td>${wo.evidence_url ? `<img src="${wo.evidence_url}" style="width:36px;height:36px;border-radius:4px;cursor:pointer;object-fit:cover" class="wo-evidence-preview-trigger" data-img="${wo.id}" title="Klik untuk memperbesar" />` : '-'}</td>
-              <td>${formatDate(wo.opened_at)}</td>
               <td>
                 <div class="table-actions">
                   ${isAdmin ? `
@@ -289,7 +314,7 @@ function renderTable(data) {
               <img src="${wo.evidence_url}" style="max-width:100%; max-height:500px; border-radius:var(--radius-md); object-fit:contain;" />
             </div>
             <div style="margin-top:var(--sp-4); font-size:var(--fs-sm); color:var(--text-secondary);">
-              <strong>Teknisi:</strong> ${wo.profiles?.full_name || '-'}<br>
+              <strong>Teknisi:</strong> ${wo.assignee?.full_name || '-'}<br>
               <strong>Waktu Mulai:</strong> ${formatDateTime(wo.started_at)}<br>
               <strong>Waktu Selesai:</strong> ${formatDateTime(wo.closed_at)}<br>
               <strong>Total Man Hours:</strong> ${wo.man_hours_actual || 0} jam
@@ -784,18 +809,20 @@ async function exportToExcel() {
 
     worksheet.columns = [
       { header: 'No. WO', key: 'wo_number', width: 20 },
+      { header: 'Dibuat Oleh', key: 'creator', width: 20 },
       { header: 'Kategori', key: 'category', width: 15 },
       { header: 'Prioritas', key: 'priority', width: 15 },
       { header: 'Status', key: 'status', width: 15 },
-      { header: 'Teknisi', key: 'technician', width: 25 },
-      { header: 'Tgl Dibuka', key: 'opened_at', width: 20 },
-      { header: 'Tgl Ditutup', key: 'closed_at', width: 20 },
+      { header: 'Di-close Oleh', key: 'technician', width: 20 },
+      { header: 'Tgl Dibuka', key: 'opened_at', width: 15 },
+      { header: 'Tgl Ditutup', key: 'closed_at', width: 15 },
       { header: 'Est. Jam', key: 'est_hours', width: 10 },
       { header: 'Act. Jam', key: 'act_hours', width: 10 },
+      { header: 'Area', key: 'area', width: 20 },
       { header: 'Deskripsi', key: 'description', width: 40 },
-      { header: 'Catatan', key: 'notes', width: 40 },
-      { header: 'Foto Problem', key: 'problem_photo', width: 25 },
-      { header: 'Foto Evidence', key: 'evidence_photo', width: 25 },
+      { header: 'Catatan', key: 'notes', width: 30 },
+      { header: 'Foto Problem', key: 'problem_photo', width: 22 },
+      { header: 'Foto Evidence', key: 'evidence_photo', width: 22 },
     ];
 
     worksheet.getRow(1).font = { bold: true };
@@ -805,21 +832,33 @@ async function exportToExcel() {
       const wo = allWOs[i];
       const rowNum = i + 2;
       
+      let areaStr = '-';
+      let cleanDesc = wo.description || '-';
+      if (cleanDesc.startsWith('[Area: ')) {
+        const endIdx = cleanDesc.indexOf(']\n');
+        if (endIdx > -1) {
+          areaStr = cleanDesc.substring(7, endIdx);
+          cleanDesc = cleanDesc.substring(endIdx + 2).trim();
+        }
+      }
+
       const row = worksheet.addRow({
         wo_number: wo.wo_number,
+        creator: wo.creator?.full_name || 'Admin',
         category: WO_CATEGORY[wo.category]?.label || wo.category,
         priority: WO_PRIORITY[wo.priority]?.label || wo.priority,
         status: WO_STATUS[wo.status]?.label || wo.status,
-        technician: wo.profiles?.full_name || '-',
+        technician: wo.status === 'closed' ? (wo.assignee?.full_name || '-') : '-',
         opened_at: formatDate(wo.opened_at),
         closed_at: wo.closed_at ? formatDate(wo.closed_at) : '-',
         est_hours: wo.man_hours_estimated || 0,
         act_hours: wo.man_hours_actual || 0,
-        description: wo.description || '-',
+        area: areaStr,
+        description: cleanDesc,
         notes: wo.notes || '-',
       });
 
-      row.alignment = { vertical: 'top', wrapText: true };
+      row.alignment = { vertical: 'middle', wrapText: true };
 
       let hasImage = false;
 
@@ -839,7 +878,8 @@ async function exportToExcel() {
           
           worksheet.addImage(imageId, {
             tl: { col: colIndex, row: rowNum - 1 },
-            ext: { width: 140, height: 140 }
+            br: { col: colIndex + 1, row: rowNum },
+            editAs: 'oneCell'
           });
           return true;
         } catch (e) {
@@ -848,8 +888,8 @@ async function exportToExcel() {
         }
       };
 
-      if (addBase64Image(wo.problem_photo_url, 11)) hasImage = true;
-      if (addBase64Image(wo.evidence_url, 12)) hasImage = true;
+      if (addBase64Image(wo.problem_photo_url, 13)) hasImage = true;
+      if (addBase64Image(wo.evidence_url, 14)) hasImage = true;
 
       if (hasImage) {
         row.height = 110; 

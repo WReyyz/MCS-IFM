@@ -36,7 +36,7 @@ export async function renderTechInbox() {
       const isRead = readNotifs.includes(n.id);
 
       return `
-        <div class="card border-0 shadow-sm mb-3 tech-notif-card" data-id="${n.id}" data-title="${escapeHtml(n.title)}" data-body="${escapeHtml(n.body)}" data-admin="${escapeHtml(adminName)}" data-time="${timeAgo(n.created_at)}" style="cursor: pointer; ${isRead ? 'opacity: 0.8;' : 'border-left: 4px solid var(--bs-primary) !important;'}">
+        <div class="card border-0 shadow-sm mb-3 tech-notif-card" data-id="${n.id}" data-title="${escapeHtml(n.title)}" data-body="${escapeHtml(n.body)}" data-image="${escapeHtml(n.image_url || '')}" data-admin="${escapeHtml(adminName)}" data-time="${timeAgo(n.created_at)}" style="cursor: pointer; ${isRead ? 'opacity: 0.8;' : 'border-left: 4px solid var(--bs-primary) !important;'}">
           <div class="card-body">
             <div class="d-flex align-items-start gap-3">
               <div class="text-primary fs-3 p-2 bg-primary bg-opacity-10 rounded position-relative">
@@ -78,6 +78,9 @@ export async function renderTechInbox() {
                 <span class="text-muted" id="notifModalTime"></span>
               </div>
               <div class="text-dark" id="notifModalBody" style="white-space: pre-wrap; font-size: 1rem; line-height: 1.5;"></div>
+              <div class="mt-3 text-center" id="notifModalImageWrap" style="display:none;">
+                <img id="notifModalImage" src="" style="max-width:100%; border-radius:8px; border: 1px solid var(--border-color);" />
+              </div>
             </div>
             <div class="modal-footer border-top-0 pt-0">
               <button type="button" class="btn btn-primary w-100 py-2" data-bs-dismiss="modal">Tutup</button>
@@ -109,6 +112,7 @@ export async function renderTechInbox() {
         const id = card.getAttribute('data-id');
         const title = card.getAttribute('data-title');
         const body = card.getAttribute('data-body');
+        const image = card.getAttribute('data-image');
         const admin = card.getAttribute('data-admin');
         const time = card.getAttribute('data-time');
 
@@ -117,6 +121,14 @@ export async function renderTechInbox() {
         modalEl.querySelector('#notifModalAdmin').textContent = `Dari: ${admin}`;
         modalEl.querySelector('#notifModalTime').textContent = time;
         modalEl.querySelector('#notifModalBody').textContent = body;
+        
+        const imgWrap = modalEl.querySelector('#notifModalImageWrap');
+        if (image) {
+          modalEl.querySelector('#notifModalImage').src = image;
+          imgWrap.style.display = 'block';
+        } else {
+          imgWrap.style.display = 'none';
+        }
 
         // Show modal
         notifModal.show();

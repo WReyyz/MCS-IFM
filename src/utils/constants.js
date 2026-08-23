@@ -104,3 +104,13 @@ export const MATERIAL_CATEGORIES = [
   'Bearing', 'Seal & Gasket', 'Belt', 'Filter', 'Electrical',
   'Lubricant', 'Fastener', 'Pipe Fitting', 'Valve', 'Lainnya'
 ];
+
+// Tools Status / Condition
+export const TOOL_STATUS = {
+  baik:            { label: 'Baik / Siap Pakai', color: '#2E8B57', bg: 'rgba(46,139,87,0.12)'   },
+  perlu_kalibrasi: { label: 'Perlu Kalibrasi',   color: '#E8920A', bg: 'rgba(232,146,10,0.12)'  },
+  dalam_kalibrasi: { label: 'Dalam Kalibrasi',   color: '#2D6A9F', bg: 'rgba(45,106,159,0.12)'  },
+  rusak:           { label: 'Rusak',             color: '#C9372C', bg: 'rgba(201,55,44,0.12)'   },
+  hilang:          { label: 'Hilang',            color: '#6B7280', bg: 'rgba(107,114,128,0.12)' },
+};
+

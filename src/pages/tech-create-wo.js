@@ -12,11 +12,7 @@ export async function renderTechCreateWo() {
   const catOptions = Object.entries(WO_CATEGORY).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('');
 
   content.innerHTML = `
-    <div class="tech-create-header mb-4 text-center">
-      <div class="tech-create-header-icon text-primary fs-1 mb-2">${icons.plus}</div>
-      <h3 class="text-dark mb-1">Buat Work Order</h3>
-      <p class="text-muted small">WO Corrective — Terbuka untuk semua teknisi</p>
-    </div>
+
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-body p-4">
         <div class="d-flex align-items-center gap-2 mb-4 fw-semibold text-primary">

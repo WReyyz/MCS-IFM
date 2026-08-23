@@ -18,10 +18,11 @@ export async function renderAdminBroadcast() {
         <div class="d-flex align-items-start justify-content-between gap-3 py-3 border-bottom">
           <div class="flex-grow-1">
             <div class="fw-semibold">${escapeHtml(n.title)}</div>
-            <div class="text-secondary small mt-1">${escapeHtml(n.body)}</div>
-            <div class="text-muted" style="font-size:.7rem;margin-top:4px">${timeAgo(n.created_at)} • ${escapeHtml(n.profiles?.full_name || 'Admin')}</div>
+            <div class="text-secondary small mt-1" style="white-space: pre-wrap;">${escapeHtml(n.body)}</div>
+            ${n.image_url ? `<div class="mt-2"><img src="${n.image_url}" style="max-width:200px; max-height:200px; border-radius:8px; object-fit:cover; border: 1px solid var(--border-color);" /></div>` : ''}
+            <div class="text-muted" style="font-size:.7rem;margin-top:8px">${timeAgo(n.created_at)} • ${escapeHtml(n.profiles?.full_name || 'Admin')}</div>
           </div>
-          <button class="btn btn-outline-danger btn-sm btn-icon flex-shrink-0" data-delete-notif="${n.id}">${icons.trash}</button>
+          <button class="btn btn-outline-danger btn-sm btn-icon flex-shrink-0" data-delete-notif="${n.id}" title="Hapus">${icons.trash}</button>
         </div>
       `).join('');
 
@@ -39,6 +40,14 @@ export async function renderAdminBroadcast() {
               <div class="mb-3">
                 <label class="form-label">Judul Notifikasi *</label>
                 <input type="text" class="form-control" id="notif-title" placeholder="Cth: Pengumuman Shift Malam" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Gambar/Poster (Opsional)</label>
+                <input type="file" class="form-control" id="notif-image" accept="image/*" />
+                <div class="mt-2" id="notif-image-preview-wrap" style="display:none;">
+                  <img id="notif-image-preview" src="" style="max-width:100%; max-height:200px; border-radius:8px; object-fit:contain; border: 1px solid var(--border-color);" />
+                  <button class="btn btn-sm btn-outline-danger mt-2" id="btn-remove-image">Hapus Gambar</button>
+                </div>
               </div>
               <div class="mb-3">
                 <label class="form-label">Isi Pesan *</label>
@@ -64,6 +73,29 @@ export async function renderAdminBroadcast() {
     </div>
   `;
 
+  let imageBase64 = null;
+  const imageInput = content.querySelector('#notif-image');
+  const previewWrap = content.querySelector('#notif-image-preview-wrap');
+  const previewImg = content.querySelector('#notif-image-preview');
+  
+  imageInput?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      imageBase64 = ev.target.result;
+      previewImg.src = imageBase64;
+      previewWrap.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  content.querySelector('#btn-remove-image')?.addEventListener('click', () => {
+    imageBase64 = null;
+    imageInput.value = '';
+    previewWrap.style.display = 'none';
+  });
+
   content.querySelector('#notif-send').addEventListener('click', async () => {
     const title = content.querySelector('#notif-title').value.trim();
     const body = content.querySelector('#notif-body').value.trim();
@@ -72,7 +104,7 @@ export async function renderAdminBroadcast() {
     btn.disabled = true;
     btn.textContent = 'Mengirim...';
     try {
-      await sendNotification(title, body);
+      await sendNotification(title, body, imageBase64);
       showToast('Notifikasi berhasil dikirim ke semua teknisi!', 'success');
       content.querySelector('#notif-title').value = '';
       content.querySelector('#notif-body').value = '';
