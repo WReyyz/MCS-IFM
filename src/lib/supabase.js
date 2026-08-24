@@ -16,6 +16,19 @@ export async function signIn(email, password) {
   return data;
 }
 
+/**
+ * Login menggunakan ID Pegawai.
+ * Mencari email yang terkait via RPC, lalu login dengan email tersebut.
+ */
+export async function signInWithEmployeeId(employeeId, password) {
+  const { data: email, error: rpcError } = await supabase.rpc('get_email_by_employee_id', {
+    emp_id: employeeId.trim(),
+  });
+  if (rpcError) throw rpcError;
+  if (!email) throw new Error('ID Pegawai tidak ditemukan');
+  return signIn(email, password);
+}
+
 export async function signUp(email, password, metadata = {}) {
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -246,6 +259,18 @@ export async function resetPassword(email, newPassword) {
   const { data, error } = await supabase.rpc('reset_user_password', {
     user_email: email,
     new_password: newPassword
+  });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Reset kata sandi berdasarkan ID Pegawai (bukan email).
+ */
+export async function resetPasswordByEmployeeId(employeeId, newPassword) {
+  const { data, error } = await supabase.rpc('reset_password_by_employee_id', {
+    emp_id: employeeId.trim(),
+    new_password: newPassword,
   });
   if (error) throw error;
   return data;

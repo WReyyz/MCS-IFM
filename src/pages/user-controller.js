@@ -2,7 +2,7 @@ import { renderAppShell } from '../components/app-shell.js';
 import { icons } from '../components/icons.js';
 import { showModal, showConfirm } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
-import { fetchAll, updateRow, getCurrentProfile, supabase, signUp, bulkUpdateRows, resetPassword } from '../lib/supabase.js';
+import { fetchAll, updateRow, getCurrentProfile, supabase, signUp, bulkUpdateRows, resetPasswordByEmployeeId } from '../lib/supabase.js';
 import { ROLES, TECHNICIAN_SKILLS } from '../utils/constants.js';
 import { formatDate, escapeHtml, badge, setupBulkSelection } from '../utils/helpers.js';
 
@@ -86,8 +86,13 @@ export async function renderUserController() {
                   <input type="text" class="form-control" id="uc-reg-name" placeholder="Nama lengkap" required />
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Email *</label>
-                  <input type="email" class="form-control" id="uc-reg-email" placeholder="email@contoh.com" required autocomplete="off" />
+                  <label class="form-label">ID Pegawai *</label>
+                  <input type="text" class="form-control" id="uc-reg-employee-id" placeholder="Contoh: EMP001" required autocomplete="off" />
+                  <div class="form-text">ID unik yang digunakan pegawai untuk login.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Email <span class="text-muted">(Opsional, untuk data internal)</span></label>
+                  <input type="email" class="form-control" id="uc-reg-email" placeholder="email@contoh.com" autocomplete="off" />
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Kata Sandi *</label>
@@ -127,12 +132,12 @@ export async function renderUserController() {
           <div class="card border-0 shadow-sm mx-auto" style="max-width:500px;">
             <div class="card-body p-4">
               <p class="text-muted small mb-4">
-                Reset kata sandi pengguna berdasarkan email terdaftar.
+                Reset kata sandi pengguna berdasarkan ID Pegawai.
               </p>
               <form id="uc-reset-form">
                 <div class="mb-3">
-                  <label class="form-label">Email Pengguna</label>
-                  <input type="email" class="form-control" id="uc-reset-email" placeholder="Masukkan email terdaftar" required autocomplete="off" />
+                  <label class="form-label">ID Pegawai</label>
+                  <input type="text" class="form-control" id="uc-reset-employee-id" placeholder="Masukkan ID Pegawai" required autocomplete="off" />
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Kata Sandi Baru</label>
@@ -223,12 +228,20 @@ async function handleRegister(e) {
   const spinner = document.getElementById('uc-reg-spinner');
   const btnText = document.getElementById('uc-reg-btn-text');
 
-  const name     = document.getElementById('uc-reg-name').value.trim();
-  const email    = document.getElementById('uc-reg-email').value.trim();
-  const password = document.getElementById('uc-reg-password').value;
-  const confirm  = document.getElementById('uc-reg-confirm').value;
-  const role     = document.getElementById('uc-reg-role').value;
+  const name       = document.getElementById('uc-reg-name').value.trim();
+  const employeeId = document.getElementById('uc-reg-employee-id').value.trim();
+  const email      = document.getElementById('uc-reg-email').value.trim();
+  const password   = document.getElementById('uc-reg-password').value;
+  const confirm    = document.getElementById('uc-reg-confirm').value;
+  const role       = document.getElementById('uc-reg-role').value;
+  const dept       = document.getElementById('uc-reg-dept').value.trim();
+  const phone      = document.getElementById('uc-reg-phone').value.trim();
 
+  if (!employeeId) {
+    errorEl.textContent = 'ID Pegawai wajib diisi';
+    errorEl.classList.remove('d-none');
+    return;
+  }
   if (password !== confirm) {
     errorEl.textContent = 'Kata sandi dan konfirmasi tidak cocok';
     errorEl.classList.remove('d-none');
@@ -240,12 +253,15 @@ async function handleRegister(e) {
     return;
   }
 
+  // Gunakan email dummy jika tidak diisi (Supabase Auth wajib email)
+  const authEmail = email || `${employeeId.toLowerCase().replace(/\s+/g, '')}@mcs.internal`;
+
   spinner.style.display = 'block';
   btnText.textContent = 'Mendaftarkan...';
 
   try {
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: authEmail,
       password,
       options: {
         data: { full_name: name, role },
@@ -253,6 +269,20 @@ async function handleRegister(e) {
     });
 
     if (error) throw error;
+
+    // Simpan employee_id ke profiles (trigger on_auth_user_created sudah buat row-nya)
+    // Coba update langsung dengan retry singkat karena profile mungkin belum ada
+    if (data?.user?.id) {
+      const maxRetry = 5;
+      for (let i = 0; i < maxRetry; i++) {
+        const { error: upErr } = await supabase
+          .from('profiles')
+          .update({ employee_id: employeeId, department: dept, phone })
+          .eq('id', data.user.id);
+        if (!upErr) break;
+        await new Promise(r => setTimeout(r, 600));
+      }
+    }
 
     successEl.textContent = 'Akun berhasil didaftarkan!';
     successEl.classList.remove('d-none');
@@ -264,7 +294,7 @@ async function handleRegister(e) {
   } catch (err) {
     const msg = err.message;
     if (msg.includes('already registered') || msg.includes('already been registered')) {
-      errorEl.textContent = 'Email sudah terdaftar.';
+      errorEl.textContent = 'Email atau ID Pegawai sudah terdaftar.';
     } else {
       errorEl.textContent = msg || 'Gagal mendaftarkan akun';
     }
@@ -286,7 +316,7 @@ async function handleResetPassword(e) {
   const spinner = document.getElementById('uc-reset-spinner');
   const btnText = document.getElementById('uc-reset-btn-text');
 
-  const email       = document.getElementById('uc-reset-email').value.trim();
+  const employeeId  = document.getElementById('uc-reset-employee-id').value.trim();
   const newPassword = document.getElementById('uc-reset-password').value;
   const confirm     = document.getElementById('uc-reset-confirm').value;
 
@@ -305,14 +335,14 @@ async function handleResetPassword(e) {
   btnText.textContent = 'Memproses...';
 
   try {
-    const success = await resetPassword(email, newPassword);
+    const success = await resetPasswordByEmployeeId(employeeId, newPassword);
     if (success) {
       successEl.textContent = 'Kata sandi berhasil diubah!';
       successEl.classList.remove('d-none');
       document.getElementById('uc-reset-form').reset();
       setTimeout(() => successEl.classList.add('d-none'), 4000);
     } else {
-      throw new Error('Email tidak ditemukan atau tidak terdaftar');
+      throw new Error('ID Pegawai tidak ditemukan atau tidak terdaftar');
     }
   } catch (err) {
     errorEl.textContent = err.message || 'Gagal mengubah kata sandi';
@@ -422,7 +452,7 @@ function renderTable() {
                   <div class="sidebar-avatar" style="width:32px;height:32px;font-size:var(--fs-xs)">${(u.full_name || 'U').charAt(0).toUpperCase()}</div>
                   <div>
                     <div class="fw-medium">${escapeHtml(u.full_name || '-')}</div>
-                    <div class="text-muted small">${u.id.slice(0, 8)}...</div>
+                    <div class="text-muted small">${u.employee_id ? `<span class="badge bg-secondary bg-opacity-25 text-secondary fw-normal">ID: ${escapeHtml(u.employee_id)}</span>` : '<span class="text-danger small">Belum ada ID Pegawai</span>'}</div>
                   </div>
                 </div>
               </td>
@@ -486,8 +516,13 @@ function showUserForm() {
         <input class="form-control" id="new-user-name" placeholder="Nama lengkap" required />
       </div>
       <div class="mb-3">
-        <label class="form-label">Email *</label>
-        <input type="email" class="form-control" id="new-user-email" placeholder="email@contoh.com" required />
+        <label class="form-label">ID Pegawai *</label>
+        <input type="text" class="form-control" id="new-user-employee-id" placeholder="Contoh: EMP001" required />
+        <div class="form-text">ID unik yang digunakan untuk login.</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Email <span class="text-muted small">(Opsional)</span></label>
+        <input type="email" class="form-control" id="new-user-email" placeholder="email@contoh.com" />
       </div>
       <div class="mb-3">
         <label class="form-label">Kata Sandi *</label>
@@ -517,13 +552,16 @@ function showUserForm() {
     onMount: (overlay, close) => {
       overlay.querySelector('#new-user-cancel').addEventListener('click', close);
       overlay.querySelector('#new-user-save').addEventListener('click', async () => {
-        const name     = overlay.querySelector('#new-user-name').value.trim();
-        const email    = overlay.querySelector('#new-user-email').value.trim();
-        const password = overlay.querySelector('#new-user-password').value;
-        const role     = overlay.querySelector('#new-user-role').value;
+        const name       = overlay.querySelector('#new-user-name').value.trim();
+        const employeeId = overlay.querySelector('#new-user-employee-id').value.trim();
+        const email      = overlay.querySelector('#new-user-email').value.trim();
+        const password   = overlay.querySelector('#new-user-password').value;
+        const role       = overlay.querySelector('#new-user-role').value;
+        const dept       = overlay.querySelector('#new-user-dept').value.trim();
+        const phone      = overlay.querySelector('#new-user-phone').value.trim();
 
-        if (!name || !email || !password) {
-          showToast('Nama, Email, dan Kata Sandi wajib diisi', 'warning');
+        if (!name || !employeeId || !password) {
+          showToast('Nama, ID Pegawai, dan Kata Sandi wajib diisi', 'warning');
           return;
         }
         if (password.length < 6) {
@@ -531,9 +569,30 @@ function showUserForm() {
           return;
         }
 
+        // Gunakan email dummy jika tidak diisi
+        const authEmail = email || `${employeeId.toLowerCase().replace(/\s+/g, '')}@mcs.internal`;
+
         try {
-          await signUp(email, password, { full_name: name, role });
-          showToast('Pengguna berhasil ditambahkan. User perlu verifikasi email.', 'success');
+          const { data, error } = await supabase.auth.signUp({
+            email: authEmail,
+            password,
+            options: { data: { full_name: name, role } },
+          });
+          if (error) throw error;
+
+          // Update employee_id ke profiles dengan retry
+          if (data?.user?.id) {
+            for (let i = 0; i < 5; i++) {
+              const { error: upErr } = await supabase
+                .from('profiles')
+                .update({ employee_id: employeeId, department: dept, phone })
+                .eq('id', data.user.id);
+              if (!upErr) break;
+              await new Promise(r => setTimeout(r, 600));
+            }
+          }
+
+          showToast('Pengguna berhasil ditambahkan', 'success');
           close();
           setTimeout(() => loadUsers(), 1500);
         } catch (err) {
@@ -551,6 +610,11 @@ function showEditUserForm(user) {
       <div class="mb-3">
         <label class="form-label">Nama Lengkap</label>
         <input class="form-control" id="edit-user-name" value="${user.full_name || ''}" />
+      </div>
+      <div class="mb-3">
+        <label class="form-label">ID Pegawai</label>
+        <input type="text" class="form-control" id="edit-user-employee-id" value="${user.employee_id || ''}" placeholder="Contoh: EMP001" />
+        <div class="form-text">ID yang digunakan pegawai untuk login. Harus unik.</div>
       </div>
       <div class="row g-3 mb-3">
         <div class="col-md-6">
@@ -585,12 +649,14 @@ function showEditUserForm(user) {
     onMount: (overlay, close) => {
       overlay.querySelector('#edit-user-cancel').addEventListener('click', close);
       overlay.querySelector('#edit-user-save').addEventListener('click', async () => {
+        const employeeId = overlay.querySelector('#edit-user-employee-id').value.trim();
         const data = {
-          full_name:  overlay.querySelector('#edit-user-name').value.trim(),
-          role:       overlay.querySelector('#edit-user-role').value,
-          department: overlay.querySelector('#edit-user-dept').value.trim(),
-          skill:      overlay.querySelector('#edit-user-skill').value,
-          phone:      overlay.querySelector('#edit-user-phone').value.trim(),
+          full_name:   overlay.querySelector('#edit-user-name').value.trim(),
+          employee_id: employeeId || null,
+          role:        overlay.querySelector('#edit-user-role').value,
+          department:  overlay.querySelector('#edit-user-dept').value.trim(),
+          skill:       overlay.querySelector('#edit-user-skill').value,
+          phone:       overlay.querySelector('#edit-user-phone').value.trim(),
         };
 
         try {
@@ -599,7 +665,11 @@ function showEditUserForm(user) {
           close();
           await loadUsers();
         } catch (err) {
-          showToast(err.message || 'Gagal menyimpan', 'error');
+          if (err.message?.includes('duplicate') || err.message?.includes('unique')) {
+            showToast('ID Pegawai sudah digunakan oleh pengguna lain', 'error');
+          } else {
+            showToast(err.message || 'Gagal menyimpan', 'error');
+          }
         }
       });
     }

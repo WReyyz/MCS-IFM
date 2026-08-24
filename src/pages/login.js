@@ -1,4 +1,4 @@
-import { signIn } from '../lib/supabase.js';
+import { signInWithEmployeeId } from '../lib/supabase.js';
 
 export async function renderLogin() {
   const app = document.getElementById('app');
@@ -20,8 +20,8 @@ export async function renderLogin() {
         <!-- LOGIN FORM -->
         <form id="login-form">
           <div class="mb-3">
-            <label class="form-label fw-medium text-white">Email</label>
-            <input type="email" class="form-control glass-input" id="login-email" required autocomplete="email" />
+            <label class="form-label fw-medium text-white">ID Pegawai</label>
+            <input type="text" class="form-control glass-input" id="login-employee-id" required autocomplete="username" placeholder="Masukkan ID Pegawai Anda" />
           </div>
           <div class="mb-3 position-relative">
             <label class="form-label fw-medium text-white">Kata Sandi</label>
@@ -78,18 +78,23 @@ export async function renderLogin() {
     spinner.style.display = 'block';
     btnText.textContent = 'Memproses...';
 
-    const email = document.getElementById('login-email').value;
+    const employeeId = document.getElementById('login-employee-id').value.trim();
     const password = document.getElementById('login-password').value;
 
     try {
-      await signIn(email, password);
+      await signInWithEmployeeId(employeeId, password);
       window.location.hash = '/';
     } catch (err) {
-      errorEl.textContent = err.message === 'Invalid login credentials'
-        ? 'Email atau kata sandi salah'
-        : err.message === 'Email not confirmed'
-        ? 'Email belum dikonfirmasi. Cek inbox email Anda.'
-        : err.message;
+      const msg = err.message;
+      if (msg === 'ID Pegawai tidak ditemukan') {
+        errorEl.textContent = 'ID Pegawai tidak ditemukan';
+      } else if (msg === 'Invalid login credentials') {
+        errorEl.textContent = 'ID Pegawai atau kata sandi salah';
+      } else if (msg === 'Email not confirmed') {
+        errorEl.textContent = 'Akun belum dikonfirmasi. Hubungi administrator.';
+      } else {
+        errorEl.textContent = msg;
+      }
       errorEl.classList.remove('d-none');
     } finally {
       spinner.style.display = 'none';
