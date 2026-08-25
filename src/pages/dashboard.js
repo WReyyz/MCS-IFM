@@ -42,98 +42,74 @@ export async function renderDashboard() {
   content.innerHTML = `
     <div class="stagger">
 
-      <!-- Fleet Pulse Bar: signature element, always first -->
-      <div class="fleet-pulse animate-fade-in-up" id="fleet-pulse-container">
-        <div class="fleet-pulse-header">
-          <span class="fleet-pulse-label">Fleet Status</span>
-          <span class="fleet-pulse-total" id="fleet-total">— unit</span>
-        </div>
-        <div class="fleet-pulse-track" id="fleet-track">
-          <!-- segments rendered by JS -->
-        </div>
-        <div class="fleet-pulse-legend" id="fleet-legend">
-          <!-- legend rendered by JS -->
-        </div>
-      </div>
+
 
       <!-- Stat Cards Row -->
       <div class="stat-cards animate-fade-in-up">
-        <div class="stat-card" style="--stat-border-color:var(--mcs-info)">
-          <div class="stat-category">Total Equipment</div>
-          <div class="stat-value" id="stat-equip">—</div>
-          <div class="stat-label">Unit terdaftar</div>
+        <div class="stat-card" style="--stat-border-color:var(--mcs-warning)">
+          <div class="stat-category">WO Corrective</div>
+          <div class="stat-value" id="stat-wo-corr">—</div>
+          <div class="stat-label">Dibuat hari ini</div>
           <div class="stat-sub">
-            <span class="stat-sub-dot" style="background:var(--mcs-operational)"></span>
-            <span id="stat-equip-sub">memuat...</span>
+            <span class="stat-sub-dot" style="background:var(--mcs-warning)"></span>
+            <span>Total WO Corrective Harian</span>
           </div>
         </div>
-        <div class="stat-card" style="--stat-border-color:var(--chart-open)">
-          <div class="stat-category">Work Order</div>
-          <div class="stat-value" id="stat-wo-open">—</div>
-          <div class="stat-label">WO masih berjalan</div>
+        <div class="stat-card" style="--stat-border-color:var(--mcs-info)">
+          <div class="stat-category">WO Preventive</div>
+          <div class="stat-value" id="stat-wo-prev">—</div>
+          <div class="stat-label">Dibuat hari ini</div>
+          <div class="stat-sub">
+            <span class="stat-sub-dot" style="background:var(--mcs-info)"></span>
+            <span>Total WO Preventive Harian</span>
+          </div>
+        </div>
+        <div class="stat-card" style="--stat-border-color:var(--mcs-amber)">
+          <div class="stat-category">Status Hold</div>
+          <div class="stat-value" id="stat-wo-hold">—</div>
+          <div class="stat-label">WO Aktif ditahan</div>
           <div class="stat-sub">
             <span class="stat-sub-dot" style="background:var(--mcs-amber)"></span>
-            <span id="stat-wo-hold">memuat...</span>
+            <span>Total WO Hold</span>
           </div>
         </div>
-        <div class="stat-card" style="--stat-border-color:var(--mcs-breakdown)">
-          <div class="stat-category">Breakdown Aktif</div>
-          <div class="stat-value" id="stat-breakdown">—</div>
-          <div class="stat-label">Unit dalam kondisi rusak</div>
+        <div class="stat-card" style="--stat-border-color:var(--mcs-operational)">
+          <div class="stat-category">Status Selesai</div>
+          <div class="stat-value" id="stat-wo-close">—</div>
+          <div class="stat-label">WO ditutup hari ini</div>
           <div class="stat-sub">
-            <span class="stat-sub-dot" style="background:var(--mcs-maintenance)"></span>
-            <span id="stat-maintenance">memuat...</span>
-          </div>
-        </div>
-        <div class="stat-card" style="--stat-border-color:var(--mcs-maintenance)">
-          <div class="stat-category">PM Terjadwal</div>
-          <div class="stat-value" id="stat-pm">—</div>
-          <div class="stat-label">Preventive maintenance aktif</div>
-          <div class="stat-sub">
-            <span class="stat-sub-dot" style="background:var(--mcs-breakdown)"></span>
-            <span id="stat-pm-overdue">memuat...</span>
+            <span class="stat-sub-dot" style="background:var(--mcs-operational)"></span>
+            <span>Total WO Selesai Harian</span>
           </div>
         </div>
       </div>
 
       <!-- Charts -->
-      <div class="charts-grid">
+      <div class="charts-grid mb-4">
         <div class="chart-card animate-fade-in-up">
           <div class="chart-card-header">
             <div>
-              <div class="chart-card-title">Tren Work Order — 6 Bulan</div>
+              <div class="chart-card-title">Distribusi Work Order (Hari Ini)</div>
+              <div class="chart-card-subtitle">Total & Status Harian</div>
             </div>
           </div>
-          <div style="position:relative;height:240px" id="chart-trend-wrapper">
-            <canvas id="chart-wo-trend"></canvas>
+          <div class="donut-chart-wrapper" style="height:240px">
+            <canvas id="chart-wo-distribution"></canvas>
           </div>
-          <div id="chart-trend-notice" style="display:none"></div>
+          <div id="chart-distribution-notice" style="display:none"></div>
         </div>
         <div class="chart-card animate-fade-in-up">
           <div class="chart-card-header">
             <div>
-              <div class="chart-card-title">Status Fleet</div>
+              <div class="chart-card-title">Work Order Harian — ${monthLabel}</div>
+              <div class="chart-card-subtitle">Open · Closed · Hold per hari</div>
             </div>
           </div>
-          <div class="donut-chart-wrapper" style="height:200px">
-            <canvas id="chart-equip-status"></canvas>
+          <div style="position:relative;height:240px" id="chart-daily-wrapper">
+            <canvas id="chart-wo-daily"></canvas>
           </div>
-          <div id="chart-status-notice" style="display:none"></div>
+          <div id="chart-daily-notice" style="display:none"></div>
         </div>
-      </div>
-
-      <!-- WO Harian (full-width, below main charts) -->
-      <div class="chart-card animate-fade-in-up mb-4">
-        <div class="chart-card-header">
-          <div>
-            <div class="chart-card-title">Work Order Harian — ${monthLabel}</div>
-            <div class="chart-card-subtitle">Open · Closed · Hold per hari</div>
-          </div>
-        </div>
-        <div style="position:relative;height:180px" id="chart-daily-wrapper">
-          <canvas id="chart-wo-daily"></canvas>
-        </div>
-        <div id="chart-daily-notice" style="display:none"></div>
       </div>
 
       <!-- Bottom: Recent WO + Upcoming PM -->
@@ -167,9 +143,8 @@ export async function renderDashboard() {
 
 async function loadDashboardData() {
   try {
-    const [stats, trend, dailyStats, recentWOs, upcomingPMs] = await Promise.all([
+    const [stats, dailyStats, recentWOs, upcomingPMs] = await Promise.all([
       getDashboardStats(),
-      getWoMonthlyTrend(),
       getWoDailyStats(),
       fetchAll('work_orders', {
         select: '*,profiles:assigned_to(full_name)',
@@ -184,39 +159,18 @@ async function loadDashboardData() {
       }),
     ]);
 
-    // ── Fleet Pulse Bar ──────────────────────────────────────────────────
-    renderFleetPulse(stats);
 
     // ── Stat cards ───────────────────────────────────────────────────────
-    animateCounter(document.getElementById('stat-equip'), stats.totalEquipment);
-    document.getElementById('stat-equip-sub').textContent =
-      `${stats.activeEquipment ?? stats.equipmentByStatus?.operational ?? '—'} operasional`;
-
-    const openWOs = recentWOs.filter(w => w.status === 'open').length;
-    const holdWOs = recentWOs.filter(w => w.status === 'hold').length;
-    animateCounter(document.getElementById('stat-wo-open'), stats.openWO ?? openWOs);
-    document.getElementById('stat-wo-hold').textContent =
-      `${stats.holdWO ?? holdWOs} WO ditahan`;
-
-    const breakdown = stats.equipmentByStatus?.breakdown ?? 0;
-    const maintenance = stats.equipmentByStatus?.maintenance ?? 0;
-    animateCounter(document.getElementById('stat-breakdown'), breakdown);
-    document.getElementById('stat-maintenance').textContent =
-      `${maintenance} dalam perawatan`;
-
-    const pmScheduled = upcomingPMs.length;
-    animateCounter(document.getElementById('stat-pm'), stats.scheduledPM ?? pmScheduled);
-    document.getElementById('stat-pm-overdue').textContent =
-      `${stats.overduePM ?? 0} terlambat`;
+    animateCounter(document.getElementById('stat-wo-corr'), stats.woCorrectiveToday || 0);
+    animateCounter(document.getElementById('stat-wo-prev'), stats.woPreventiveToday || 0);
+    animateCounter(document.getElementById('stat-wo-hold'), stats.woHoldActive || 0);
+    animateCounter(document.getElementById('stat-wo-close'), stats.woClosedToday || 0);
 
     // ── WO Daily Chart ───────────────────────────────────────────────────
     renderDailyChart(dailyStats);
 
-    // ── WO Trend Chart ───────────────────────────────────────────────────
-    renderTrendChart(trend);
-
-    // ── Equipment Status Donut ───────────────────────────────────────────
-    renderStatusDonut(stats);
+    // ── Distribusi WO Donut ──────────────────────────────────────────────
+    renderWoDistributionDonut(stats);
 
     // ── Recent WOs ───────────────────────────────────────────────────────
     renderRecentWOs(recentWOs);
@@ -229,47 +183,6 @@ async function loadDashboardData() {
   }
 }
 
-// ── Fleet Pulse Bar ──────────────────────────────────────────────────────────
-function renderFleetPulse(stats) {
-  const total = stats.totalEquipment || 0;
-  const byStatus = stats.equipmentByStatus || {};
-  const operational   = byStatus.operational    || 0;
-  const maintenance   = byStatus.maintenance    || 0;
-  const breakdown     = byStatus.breakdown      || 0;
-  const decommissioned = byStatus.decommissioned || 0;
-
-  document.getElementById('fleet-total').textContent = `${total} unit terdaftar`;
-
-  const track  = document.getElementById('fleet-track');
-  const legend = document.getElementById('fleet-legend');
-
-  if (total === 0) {
-    track.innerHTML = `<div style="flex:1;background:var(--graphite);border-radius:5px"></div>`;
-    legend.innerHTML = `<span class="fleet-legend-item" style="color:var(--text-muted)">Belum ada data equipment</span>`;
-    return;
-  }
-
-  const segments = [
-    { cls: 'seg-operational', count: operational,    label: 'Operasional',  dotColor: 'var(--status-operational)' },
-    { cls: 'seg-maintenance',  count: maintenance,    label: 'Perawatan',    dotColor: 'var(--status-maintenance)'  },
-    { cls: 'seg-breakdown',    count: breakdown,      label: 'Rusak',        dotColor: 'var(--status-breakdown)'    },
-    { cls: 'seg-inactive',     count: decommissioned, label: 'Non-Aktif',    dotColor: 'var(--status-inactive)'     },
-  ].filter(s => s.count > 0);
-
-  track.innerHTML = segments.map(s =>
-    `<div class="fleet-pulse-segment ${s.cls}"
-          style="flex:${s.count}"
-          title="${s.label}: ${s.count} unit"></div>`
-  ).join('');
-
-  legend.innerHTML = segments.map(s => `
-    <div class="fleet-legend-item">
-      <div class="fleet-legend-dot" style="background:${s.dotColor}"></div>
-      <span class="fleet-legend-count">${s.count}</span>
-      <span>${s.label}</span>
-    </div>
-  `).join('');
-}
 
 // ── Daily WO Chart ────────────────────────────────────────────────────────────
 function renderDailyChart(dailyStats) {
@@ -375,83 +288,17 @@ function renderDailyChart(dailyStats) {
   });
 }
 
-// ── WO Trend Chart (6 months) ─────────────────────────────────────────────────
-function renderTrendChart(trend) {
-  const wrapper = document.getElementById('chart-trend-wrapper');
-  const noticeEl = document.getElementById('chart-trend-notice');
-  const ctx = document.getElementById('chart-wo-trend');
-  if (!ctx) return;
-
-  const totalActivity = trend.reduce((sum, t) => sum + (t.open||0) + (t.closed||0), 0);
-
-  if (totalActivity === 0) {
-    wrapper.style.display = 'none';
-    noticeEl.style.display = 'block';
-    noticeEl.innerHTML = `
-      <div class="chart-empty">
-        <div class="chart-empty-icon">${icons.ganttChart || '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h10M8 12h6M8 18h4"/></svg>'}</div>
-        <h4>Belum ada data tren</h4>
-        <p>Tren 6 bulan akan muncul setelah work order dibuat</p>
-      </div>`;
-    return;
-  }
-
-  const activeMonths = trend.filter(t => (t.open||0) + (t.closed||0) > 0).length;
-  if (activeMonths <= 1) {
-    noticeEl.style.display = 'block';
-    noticeEl.innerHTML = `
-      <div class="chart-low-data-notice">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        Hanya ${activeMonths} bulan dengan aktivitas — tren akan terlihat dalam beberapa bulan ke depan.
-      </div>`;
-  }
-
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: trend.map(t => t.label),
-      datasets: [
-        {
-          label: 'Terbuka',
-          data: trend.map(t => t.open),
-          backgroundColor: CHART.open + 'CC',
-          borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 0, bottomRight: 0 },
-          borderSkipped: 'bottom',
-          barPercentage: 0.6,
-        },
-        {
-          label: 'Selesai',
-          data: trend.map(t => t.closed),
-          backgroundColor: CHART.closed + 'CC',
-          borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 0, bottomRight: 0 },
-          borderSkipped: 'bottom',
-          barPercentage: 0.6,
-        },
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: CHART.tick, font: { size: 10 }, usePointStyle: true, pointStyle: 'rectRounded', padding: 14 } },
-        tooltip: baseTooltip,
-      },
-      scales: baseScaleOpts,
-    }
-  });
-}
-
-// ── Equipment Status Donut ────────────────────────────────────────────────────
-function renderStatusDonut(stats) {
-  const noticeEl = document.getElementById('chart-status-notice');
-  const ctx = document.getElementById('chart-equip-status');
+// ── Distribusi Work Order (Hari Ini) Donut ──────────────────────────────────────
+function renderWoDistributionDonut(stats) {
+  const noticeEl = document.getElementById('chart-distribution-notice');
+  const ctx = document.getElementById('chart-wo-distribution');
   if (!ctx) return;
 
   const counts = [
-    stats.equipmentByStatus?.operational    || 0,
-    stats.equipmentByStatus?.maintenance    || 0,
-    stats.equipmentByStatus?.breakdown      || 0,
-    stats.equipmentByStatus?.decommissioned || 0,
+    stats.woCorrectiveToday || 0,
+    stats.woPreventiveToday || 0,
+    stats.woHoldActive || 0,
+    stats.woClosedToday || 0,
   ];
   const total = counts.reduce((a, b) => a + b, 0);
 
@@ -461,8 +308,8 @@ function renderStatusDonut(stats) {
     noticeEl.innerHTML = `
       <div class="chart-empty" style="min-height:180px">
         <div class="chart-empty-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85m19.5 1.9c-3.5-.93-6.63-.82-8.94 0-2.58.92-5.01 2.86-7.44 6.32"/></svg></div>
-        <h4>Belum ada equipment</h4>
-        <p>Tambahkan equipment untuk melihat distribusi status</p>
+        <h4>Belum ada data Work Order</h4>
+        <p>Data hari ini belum tersedia</p>
       </div>`;
     return;
   }
@@ -470,14 +317,14 @@ function renderStatusDonut(stats) {
   new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: ['Operasional', 'Perawatan', 'Rusak', 'Non-Aktif'],
+      labels: ['Corrective', 'Preventive', 'Hold', 'Selesai'],
       datasets: [{
         data: counts,
         backgroundColor: [
-          '#2E8B57CC',  // forest green
-          '#E8920ACC',  // amber
-          '#C9372CCC',  // hazard red
-          '#6B7280CC',  // zinc
+          '#E8920ACC', // amber for corrective
+          '#00B4D8CC', // info for preventive
+          '#F4A261CC', // slightly lighter amber for hold
+          '#2E8B57CC', // green for close
         ],
         borderWidth: 0,
         spacing: 2,

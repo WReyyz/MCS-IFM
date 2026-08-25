@@ -123,7 +123,7 @@ export async function bulkUpdateRows(table, ids, updates, pkField = 'id') {
 export async function getDashboardStats() {
   const [equipRes, woRes, schedRes, profilesRes] = await Promise.all([
     supabase.from('equipment').select('idAset, kondisi'),
-    supabase.from('work_orders').select('id, status, man_hours_estimated, man_hours_actual, opened_at, closed_at'),
+    supabase.from('work_orders').select('id, category, status, man_hours_estimated, man_hours_actual, opened_at, closed_at'),
     supabase.from('technician_schedule').select('id, profile_id, status, schedule_date').eq('schedule_date', new Date().toISOString().split('T')[0]),
     supabase.from('profiles').select('id, role').eq('role', 'technician'),
   ]);
@@ -144,6 +144,12 @@ export async function getDashboardStats() {
     return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
   });
 
+  const todayStr = now.toISOString().split('T')[0];
+  const woCorrectiveToday = allWorkOrders.filter(wo => wo.category === 'corrective' && wo.opened_at && wo.opened_at.startsWith(todayStr)).length;
+  const woPreventiveToday = allWorkOrders.filter(wo => wo.category === 'preventive' && wo.opened_at && wo.opened_at.startsWith(todayStr)).length;
+  const woHoldActive = allWorkOrders.filter(wo => wo.status === 'hold').length;
+  const woClosedToday = allWorkOrders.filter(wo => wo.status === 'closed' && wo.closed_at && wo.closed_at.startsWith(todayStr)).length;
+
   const totalEquipment = equipment.length;
   const activeEquipment = equipment.filter(e => e.kondisi === 'operational').length;
   const woOpen = allWorkOrders.filter(wo => wo.status !== 'closed').length;
@@ -163,6 +169,10 @@ export async function getDashboardStats() {
     woOpen,
     woClosed,
     woOpenMonth,
+    woCorrectiveToday,
+    woPreventiveToday,
+    woHoldActive,
+    woClosedToday,
     manHoursEffectiveness,
     totalEstimated,
     totalActual,

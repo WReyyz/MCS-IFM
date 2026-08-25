@@ -15,6 +15,7 @@ import { renderTechnician } from './pages/technician.js';
 import { renderUserController } from './pages/user-controller.js';
 import { renderPlan } from './pages/plan.js';
 import { renderAdminBroadcast } from './pages/admin-broadcast.js';
+import { renderProfile } from './pages/profile.js';
 
 // Pages - Technician
 import { renderTechWoList } from './pages/tech-wo-list.js';
@@ -37,6 +38,7 @@ router
   .on('/technician', renderTechnician)
   .on('/user-controller', renderUserController)
   .on('/admin-broadcast', renderAdminBroadcast)
+  .on('/profile', renderProfile)
   // Technician routes
   .on('/tech-wo-list', renderTechWoList)
   .on('/tech-create-wo', renderTechCreateWo)

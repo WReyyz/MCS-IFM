@@ -235,10 +235,7 @@ function renderTable(data) {
                     <button class="btn btn-outline-warning btn-sm btn-icon" data-edit="${wo.id}" title="Edit">${icons.edit}</button>
                     <button class="btn btn-outline-danger btn-sm btn-icon" data-delete="${wo.id}" title="Hapus">${icons.trash}</button>
                   ` : ''}
-                  ${!isAdmin && wo.status === 'open' ? `
-                    <button class="btn btn-outline-success btn-sm btn-icon" data-close="${wo.id}" title="Close WO">${icons.check}</button>
-                  ` : ''}
-                  ${!isAdmin && wo.status === 'hold' ? `
+                  ${(wo.status === 'open' || wo.status === 'hold') ? `
                     <button class="btn btn-outline-success btn-sm btn-icon" data-close="${wo.id}" title="Close WO">${icons.check}</button>
                   ` : ''}
                 </div>
@@ -330,22 +327,43 @@ function renderTable(data) {
   });
 }
 
-// ---- ADMIN: Create/Edit WO Form ----
 function showWOForm(existing = null) {
   const isEdit = !!existing;
   showModal({
     title: isEdit ? 'Edit Work Order' : 'Buat Work Order Baru',
-    size: 'modal-lg',
-    body: `
+    size: isEdit ? 'modal-lg' : 'modal-md',
+    body: !isEdit ? `
+      <div class="mb-3">
+        <label class="form-label">Kategori *</label>
+        <select class="form-select" id="wo-category">
+          ${Object.entries(WO_CATEGORY).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Area *</label>
+        <input type="text" class="form-control" id="wo-area" placeholder="Contoh: Gedung A, Lantai 1..." required />
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Deskripsi Masalah *</label>
+        <textarea class="form-control" id="wo-desc" placeholder="Jelaskan masalah yang perlu ditangani..." style="min-height:100px"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Foto Detail/Lokasi (Opsional) - Maks 1MB</label>
+        <input type="file" class="form-control" id="wo-photo" accept="image/*" />
+        <div id="wo-photo-preview-wrap" class="mt-2 text-center" style="display:none;">
+          <img id="wo-photo-preview" src="" class="img-fluid rounded border" style="max-height:180px; object-fit:cover;" />
+        </div>
+      </div>
+    ` : `
       <div class="row g-3 mb-3">
         <div class="col-md-6">
           <label class="form-label">No. WO</label>
-          <input class="form-control" id="wo-number" value="${existing?.wo_number || generateWoNumber()}" ${isEdit ? 'readonly style="opacity:0.6"' : ''} />
+          <input class="form-control" id="wo-number" value="${existing.wo_number}" readonly style="opacity:0.6" />
         </div>
         <div class="col-md-6">
           <label class="form-label">Kategori *</label>
           <select class="form-select" id="wo-category">
-            ${Object.entries(WO_CATEGORY).map(([k, v]) => `<option value="${k}" ${existing?.category === k ? 'selected' : ''}>${v.label}</option>`).join('')}
+            ${Object.entries(WO_CATEGORY).map(([k, v]) => `<option value="${k}" ${existing.category === k ? 'selected' : ''}>${v.label}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -353,30 +371,27 @@ function showWOForm(existing = null) {
         <div class="col-md-6">
           <label class="form-label">Prioritas</label>
           <select class="form-select" id="wo-priority">
-            ${Object.entries(WO_PRIORITY).map(([k, v]) => `<option value="${k}" ${existing?.priority === k ? 'selected' : ''}>${v.label}</option>`).join('')}
+            ${Object.entries(WO_PRIORITY).map(([k, v]) => `<option value="${k}" ${existing.priority === k ? 'selected' : ''}>${v.label}</option>`).join('')}
           </select>
         </div>
         <div class="col-md-6">
           <label class="form-label">Ditugaskan Ke *</label>
           <select class="form-select" id="wo-assigned">
             <option value="">Pilih Teknisi</option>
-            ${technicianList.map(t => `<option value="${t.id}" ${existing?.assigned_to === t.id ? 'selected' : ''}>${t.full_name}</option>`).join('')}
+            ${technicianList.map(t => `<option value="${t.id}" ${existing.assigned_to === t.id ? 'selected' : ''}>${t.full_name}</option>`).join('')}
           </select>
         </div>
       </div>
       <div class="row g-3 mb-3">
         <div class="col-md-6">
           <label class="form-label">Estimasi Man Hours (Jam)</label>
-          <input type="number" class="form-control" id="wo-est-hours" value="${existing?.man_hours_estimated || ''}" placeholder="0" step="0.5" min="0" />
+          <input type="number" class="form-control" id="wo-est-hours" value="${existing.man_hours_estimated || ''}" placeholder="0" step="0.5" min="0" />
         </div>
-        ${isEdit ? `
         <div class="col-md-6">
           <label class="form-label">Aktual Man Hours</label>
-          <input type="number" class="form-control" id="wo-act-hours" value="${existing?.man_hours_actual || ''}" placeholder="0" step="0.5" min="0" />
+          <input type="number" class="form-control" id="wo-act-hours" value="${existing.man_hours_actual || ''}" placeholder="0" step="0.5" min="0" />
         </div>
-        ` : ''}
       </div>
-      ${isEdit ? `
       <div class="row g-3 mb-3">
         <div class="col-md-6">
           <label class="form-label">Status</label>
@@ -385,27 +400,27 @@ function showWOForm(existing = null) {
           </div>
         </div>
       </div>
-      ` : ''}
-      ${!isEdit ? `
-      <div class="mb-3">
-        <div class="text-muted small">
-          Status otomatis: <strong>Open</strong>
-        </div>
-      </div>
-      ` : ''}
       <div class="mb-3">
         <label class="form-label">Deskripsi</label>
-        <textarea class="form-control" id="wo-desc" placeholder="Detail pekerjaan...">${existing?.description || ''}</textarea>
+        <textarea class="form-control" id="wo-desc" placeholder="Detail pekerjaan...">${existing.description || ''}</textarea>
       </div>
       <div class="mb-3">
         <label class="form-label">Catatan</label>
-        <textarea class="form-control" id="wo-notes" placeholder="Catatan tambahan...">${existing?.notes || ''}</textarea>
+        <textarea class="form-control" id="wo-notes" placeholder="Catatan tambahan...">${existing.notes || ''}</textarea>
       </div>
-      ${isEdit && existing?.evidence_url ? `
+      ${existing.evidence_url ? `
       <div class="mb-3">
         <label class="form-label">Evidence Foto</label>
         <div class="mt-2">
           <img src="${existing.evidence_url}" class="img-fluid rounded border" style="max-height:200px; object-fit:cover;" />
+        </div>
+      </div>
+      ` : ''}
+      ${existing.problem_photo_url ? `
+      <div class="mb-3">
+        <label class="form-label">Foto Masalah (Dari Pelapor)</label>
+        <div class="mt-2">
+          <img src="${existing.problem_photo_url}" class="img-fluid rounded border" style="max-height:200px; object-fit:cover;" />
         </div>
       </div>
       ` : ''}
@@ -415,54 +430,111 @@ function showWOForm(existing = null) {
       <button class="btn btn-primary" id="wo-save">${isEdit ? 'Simpan Perubahan' : 'Buat WO'}</button>
     `,
     onMount: (overlay, close) => {
+      let photoBase64 = null;
+      if (!isEdit) {
+        const photoEl = overlay.querySelector('#wo-photo');
+        const previewWrap = overlay.querySelector('#wo-photo-preview-wrap');
+        const previewImg = overlay.querySelector('#wo-photo-preview');
+        
+        if (photoEl) {
+          photoEl.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) { previewWrap.style.display = 'none'; photoBase64 = null; return; }
+            if (file.size > 1024 * 1024) {
+              showToast('Ukuran foto maks 1MB', 'warning');
+              photoEl.value = '';
+              previewWrap.style.display = 'none';
+              photoBase64 = null;
+              return;
+            }
+            const reader = new FileReader();
+            reader.onload = ev => {
+              photoBase64 = ev.target.result;
+              previewImg.src = photoBase64;
+              previewWrap.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+          });
+        }
+      }
+
       overlay.querySelector('#wo-cancel').addEventListener('click', close);
       overlay.querySelector('#wo-save').addEventListener('click', async () => {
-        const wo_number = overlay.querySelector('#wo-number').value.trim();
-        const category = overlay.querySelector('#wo-category').value;
-        const assigned_to = overlay.querySelector('#wo-assigned').value;
-
-        if (!wo_number) {
-          showToast('No. WO wajib diisi', 'warning');
-          return;
-        }
-        if (!assigned_to) {
-          showToast('Teknisi wajib dipilih', 'warning');
-          return;
-        }
-
-        const data = {
-          wo_number,
-          category,
-          type: 'corrective',
-          priority: overlay.querySelector('#wo-priority').value,
-          assigned_to,
-          description: overlay.querySelector('#wo-desc').value.trim(),
-          notes: overlay.querySelector('#wo-notes').value.trim(),
-          man_hours_estimated: parseFloat(overlay.querySelector('#wo-est-hours').value) || 0,
-        };
-
-        // New WO: always open
-        if (!isEdit) {
-          data.status = 'open';
-        }
-
-        // Edit mode: include actual hours
         if (isEdit) {
-          data.man_hours_actual = parseFloat(overlay.querySelector('#wo-act-hours').value) || 0;
-        }
+          const wo_number = overlay.querySelector('#wo-number').value.trim();
+          const category = overlay.querySelector('#wo-category').value;
+          const assigned_to = overlay.querySelector('#wo-assigned').value;
 
-        try {
-          if (isEdit) {
+          if (!wo_number) {
+            showToast('No. WO wajib diisi', 'warning');
+            return;
+          }
+          if (!assigned_to) {
+            showToast('Teknisi wajib dipilih', 'warning');
+            return;
+          }
+
+          const data = {
+            wo_number,
+            category,
+            type: 'corrective',
+            priority: overlay.querySelector('#wo-priority').value,
+            assigned_to,
+            description: overlay.querySelector('#wo-desc').value.trim(),
+            notes: overlay.querySelector('#wo-notes').value.trim(),
+            man_hours_estimated: parseFloat(overlay.querySelector('#wo-est-hours').value) || 0,
+            man_hours_actual: parseFloat(overlay.querySelector('#wo-act-hours').value) || 0,
+          };
+
+          try {
             await updateRow('work_orders', existing.id, data);
             showToast('WO berhasil diperbarui', 'success');
-          } else {
+            close();
+            await loadWOs();
+          } catch (err) {
+            showToast(err.message || 'Gagal menyimpan', 'error');
+          }
+        } else {
+          // Create Mode
+          const area = overlay.querySelector('#wo-area').value.trim();
+          const desc = overlay.querySelector('#wo-desc').value.trim();
+          const category = overlay.querySelector('#wo-category').value;
+
+          if (!area) { showToast('Area wajib diisi', 'warning'); return; }
+          if (!desc) { showToast('Deskripsi masalah wajib diisi', 'warning'); return; }
+
+          const fullDesc = `[Area: ${area}]\n${desc}`;
+
+          const data = {
+            wo_number: generateWoNumber(),
+            type: 'corrective',
+            category: category,
+            priority: 'medium',
+            status: 'open',
+            assigned_to: null,
+            requested_by: currentProfile.id,
+            equipment_id: null,
+            description: fullDesc,
+            notes: '',
+            problem_photo_url: photoBase64,
+            opened_at: new Date().toISOString()
+          };
+
+          try {
+            const btn = overlay.querySelector('#wo-save');
+            btn.disabled = true;
+            btn.textContent = 'Menyimpan...';
+            
             await insertRow('work_orders', data);
             showToast('WO berhasil dibuat', 'success');
+            close();
+            await loadWOs();
+          } catch (err) {
+            const btn = overlay.querySelector('#wo-save');
+            btn.disabled = false;
+            btn.textContent = 'Buat WO';
+            showToast(err.message || 'Gagal menyimpan', 'error');
           }
-          close();
-          await loadWOs();
-        } catch (err) {
-          showToast(err.message || 'Gagal menyimpan', 'error');
         }
       });
     }

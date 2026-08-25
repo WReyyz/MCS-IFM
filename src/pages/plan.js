@@ -8,7 +8,6 @@ import { Chart, registerables } from 'chart.js';
 Chart.register(...registerables);
 
 // Module-level chart instances so we can destroy & re-render
-let chartGauge = null;
 let chartTrend = null;
 
 export async function renderPlan() {
@@ -236,33 +235,8 @@ export async function renderPlan() {
 
       <!-- CHARTS ROW -->
       <div class="row g-4 mb-4">
-        <!-- Gauge Chart -->
-        <div class="col-lg-4">
-          <div class="card h-100 border-0 shadow-sm animate-fade-in-up">
-            <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
-              <h6 class="card-title mb-0 fw-bold">Gauge Efektivitas</h6>
-            </div>
-            <div class="card-body d-flex flex-column">
-              <div style="position:relative;height:240px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-                <canvas id="chart-gauge" style="max-width:240px;max-height:240px;"></canvas>
-                <div id="gauge-center-label" style="position:absolute;bottom:30px;text-align:center;">
-                  <div style="font-size:1.8rem;font-weight:700;color:var(--text-primary);" id="gauge-pct-label">–%</div>
-                  <div style="font-size:0.75rem;color:var(--text-muted);">Efektivitas</div>
-                </div>
-              </div>
-              <div class="mt-auto px-2">
-                <div class="d-flex flex-column gap-2 small text-muted">
-                  <div class="d-flex align-items-center gap-2"><span style="width:12px;height:12px;border-radius:2px;background:#8CC63F;display:inline-block;"></span> Ideal (70-100%)</div>
-                  <div class="d-flex align-items-center gap-2"><span style="width:12px;height:12px;border-radius:2px;background:#F59E0B;display:inline-block;"></span> Overload Ringan (100-120%)</div>
-                  <div class="d-flex align-items-center gap-2"><span style="width:12px;height:12px;border-radius:2px;background:#EF4444;display:inline-block;"></span> Kritis (&gt;120% atau &lt;50%)</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- Trend Chart -->
-        <div class="col-lg-8">
+        <div class="col-12">
           <div class="card h-100 border-0 shadow-sm animate-fade-in-up">
             <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
               <h6 class="card-title mb-0 fw-bold">Tren Available vs Load Man Hours</h6>
@@ -412,7 +386,7 @@ async function loadPlanData() {
     const totalDays = days.length;
 
     // Fetch all required data in parallel
-    const [technicians, shiftMaster, schedules, requirements, pmSchedules] = await Promise.all([
+    const [technicians, shiftMaster, schedules, requirements, pmSchedules, closedWOs] = await Promise.all([
       // All technicians
       fetchAll('profiles', {
         filters: [{ column: 'role', value: 'technician' }],
@@ -439,6 +413,15 @@ async function loadPlanData() {
         filters: [
           { column: 'next_due', op: 'gte', value: startStr },
           { column: 'next_due', op: 'lte', value: endStr },
+        ]
+      }),
+      // Closed work orders in the period for Actual Man Hours
+      fetchAll('work_orders', {
+        select: 'id, closed_at, man_hours_actual, assigned_to',
+        filters: [
+          { column: 'status', value: 'closed' },
+          { column: 'closed_at', op: 'gte', value: startStr + 'T00:00:00.000Z' },
+          { column: 'closed_at', op: 'lte', value: endStr + 'T23:59:59.999Z' }
         ]
       }),
     ]);
@@ -518,6 +501,27 @@ async function loadPlanData() {
       }
     });
 
+    // ── ACTUAL MAN HOURS ─────────────────────────────────────
+    const actualPerTech = {};
+    const actualPerDay = {};
+    technicians.forEach(t => { actualPerTech[t.id] = 0; });
+    days.forEach(d => { actualPerDay[d] = 0; });
+
+    let totalActual = 0;
+    closedWOs.forEach(wo => {
+      const mh = parseFloat(wo.man_hours_actual) || 0;
+      if (mh > 0 && wo.closed_at) {
+        totalActual += mh;
+        const dateStr = wo.closed_at.slice(0, 10);
+        if (actualPerDay.hasOwnProperty(dateStr)) {
+          actualPerDay[dateStr] += mh;
+        }
+        if (wo.assigned_to && actualPerTech.hasOwnProperty(wo.assigned_to)) {
+          actualPerTech[wo.assigned_to] += mh;
+        }
+      }
+    });
+
     // ── EFFECTIVENESS ────────────────────────────────────────
     const effectiveness = totalAvailable > 0
       ? Math.round((totalLoad / totalAvailable) * 100)
@@ -546,9 +550,6 @@ async function loadPlanData() {
     if (statEffBadge) statEffBadge.innerHTML =
       `<span class="effectiveness-badge ${effLabel.cls}">${effLabel.text}</span>`;
 
-    // ── Gauge Chart ──────────────────────────────────────────
-    renderGaugeChart(effectiveness);
-
     // ── Trend Chart ──────────────────────────────────────────
     const periodType   = document.getElementById('plan-period-type').value;
     const breakdownSel = document.getElementById('plan-chart-breakdown');
@@ -558,10 +559,10 @@ async function loadPlanData() {
     else if (periodType === 'week') chartMode = 'day';
     else chartMode = breakdownSel?.value || 'day';
 
-    renderTrendChart(days, availPerDay, loadPerDay, chartMode);
+    renderTrendChart(days, availPerDay, loadPerDay, actualPerDay, chartMode);
 
     // ── Tech Breakdown Table ─────────────────────────────────
-    renderTechBreakdown(technicians, availPerTech, loadPerTech, requirements, totalDays);
+    renderTechBreakdown(technicians, availPerTech, loadPerTech, actualPerTech, requirements, totalDays);
 
   } catch (err) {
     console.error('Plan page error:', err);
@@ -574,99 +575,83 @@ async function loadPlanData() {
 }
 
 // ──────────────────────────────────────────────────────────────
-//  Gauge / Donut Chart
+//  Trend Chart  — 100% stacked bar (Available / Load / Actual %)
 // ──────────────────────────────────────────────────────────────
-function renderGaugeChart(effectiveness) {
-  const ctx = document.getElementById('chart-gauge');
-  if (!ctx) return;
-
-  if (chartGauge) { chartGauge.destroy(); chartGauge = null; }
-
-  const color    = getEffColor(effectiveness);
-  const capped   = Math.min(effectiveness, 150);
-  const remaining = Math.max(0, 150 - capped);
-
-  const gaugeLabel = document.getElementById('gauge-pct-label');
-  if (gaugeLabel) {
-    gaugeLabel.textContent = effectiveness + '%';
-    gaugeLabel.style.color = color;
-  }
-
-  chartGauge = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      datasets: [{
-        data: [capped, remaining],
-        backgroundColor: [color, 'rgba(255,255,255,0.05)'],
-        borderWidth: 0,
-        borderRadius: 6,
-        spacing: 2,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '72%',
-      rotation: -90,
-      circumference: 180,
-      plugins: {
-        legend: { display: false },
-        tooltip: { enabled: false },
-      }
-    }
-  });
-}
-
-// ──────────────────────────────────────────────────────────────
-//  Trend Chart  (Available vs Load per day / week)
-// ──────────────────────────────────────────────────────────────
-function renderTrendChart(days, availPerDay, loadPerDay, chartMode = 'day') {
+function renderTrendChart(days, availPerDay, loadPerDay, actualPerDay, chartMode = 'day') {
   const ctx = document.getElementById('chart-trend');
   if (!ctx) return;
 
   if (chartTrend) { chartTrend.destroy(); chartTrend = null; }
 
+  // ─── aggregate raw data per bucket ───────────────────────────
   let labels    = [];
-  let availData = [];
-  let loadData  = [];
+  let rawAvail  = [];   // absolute hours
+  let rawLoad   = [];
+  let rawActual = [];
 
   if (chartMode === 'month') {
-    // Group by month (yearly view)
     const months = {};
     days.forEach(d => {
       const mk = d.slice(0, 7);
-      if (!months[mk]) months[mk] = { avail: 0, load: 0 };
-      months[mk].avail += availPerDay[d] || 0;
-      months[mk].load  += loadPerDay[d]  || 0;
+      if (!months[mk]) months[mk] = { avail: 0, load: 0, actual: 0 };
+      months[mk].avail  += availPerDay[d]  || 0;
+      months[mk].load   += loadPerDay[d]   || 0;
+      months[mk].actual += actualPerDay[d] || 0;
     });
     Object.entries(months).forEach(([mk, data]) => {
       const dt = new Date(mk + '-01T00:00:00');
       labels.push(dt.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' }));
-      availData.push(parseFloat(data.avail.toFixed(1)));
-      loadData.push(parseFloat(data.load.toFixed(1)));
+      rawAvail.push(parseFloat(data.avail.toFixed(2)));
+      rawLoad.push(parseFloat(data.load.toFixed(2)));
+      rawActual.push(parseFloat(data.actual.toFixed(2)));
     });
   } else if (chartMode === 'week') {
-    // Group by ISO week
     const weeks = {};
     days.forEach(d => {
       const wk = getISOWeek(new Date(d + 'T00:00:00'));
-      if (!weeks[wk]) weeks[wk] = { avail: 0, load: 0 };
-      weeks[wk].avail += availPerDay[d] || 0;
-      weeks[wk].load  += loadPerDay[d]  || 0;
+      if (!weeks[wk]) weeks[wk] = { avail: 0, load: 0, actual: 0 };
+      weeks[wk].avail  += availPerDay[d]  || 0;
+      weeks[wk].load   += loadPerDay[d]   || 0;
+      weeks[wk].actual += actualPerDay[d] || 0;
     });
     Object.entries(weeks).forEach(([wk, data]) => {
       labels.push(wk.replace(/^\d+-W/, 'W'));
-      availData.push(parseFloat(data.avail.toFixed(1)));
-      loadData.push(parseFloat(data.load.toFixed(1)));
+      rawAvail.push(parseFloat(data.avail.toFixed(2)));
+      rawLoad.push(parseFloat(data.load.toFixed(2)));
+      rawActual.push(parseFloat(data.actual.toFixed(2)));
     });
   } else {
-    // Per day
     days.forEach(d => {
       labels.push(new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }));
-      availData.push(parseFloat((availPerDay[d] || 0).toFixed(1)));
-      loadData.push(parseFloat((loadPerDay[d] || 0).toFixed(1)));
+      rawAvail.push(parseFloat((availPerDay[d]  || 0).toFixed(2)));
+      rawLoad.push(parseFloat((loadPerDay[d]    || 0).toFixed(2)));
+      rawActual.push(parseFloat((actualPerDay[d] || 0).toFixed(2)));
     });
   }
+
+  // ─── Convert to true-stacked segments (all sum to 100%) ──────
+  // Segment layout (bottom → top):
+  //   [1] Actual Used   = actual / avail × 100              → Emerald
+  //   [2] Load (planned but not yet actual) = max(0, load/avail*100 - actualPct) → Purple
+  //   [3] Remaining capacity = 100 - max(loadPct, actualPct) → Blue-gray
+  // All 3 in the SAME stack → 1 bar per day
+
+  const actualSegPct   = rawAvail.map((av, i) =>
+    av > 0 ? parseFloat(((rawActual[i] / av) * 100).toFixed(1)) : 0
+  );
+  const loadSegPct     = rawAvail.map((av, i) => {
+    if (av <= 0) return 0;
+    const loadPct   = (rawLoad[i]   / av) * 100;
+    const actPct    = (rawActual[i] / av) * 100;
+    return parseFloat(Math.max(0, loadPct - actPct).toFixed(1));
+  });
+  const remainSegPct   = rawAvail.map((av, i) => {
+    if (av <= 0) return 0;
+    const loadPct   = (rawLoad[i]   / av) * 100;
+    const actPct    = (rawActual[i] / av) * 100;
+    const used      = Math.max(loadPct, actPct);
+    return parseFloat(Math.max(0, 100 - used).toFixed(1));
+  });
 
   chartTrend = new Chart(ctx, {
     type: 'bar',
@@ -674,35 +659,36 @@ function renderTrendChart(days, availPerDay, loadPerDay, chartMode = 'day') {
       labels,
       datasets: [
         {
-          label: 'Available Man Hours',
-          data: availData,
-          backgroundColor: 'rgba(23,59,99,0.25)',
-          borderColor: 'rgba(23,59,99,0.8)',
-          borderWidth: 1.5,
-          borderRadius: 4,
+          label: 'Actual Man Hours',
+          data: actualSegPct,
+          backgroundColor: 'rgba(16,185,129,0.88)',
+          hoverBackgroundColor: 'rgba(16,185,129,1)',
+          borderWidth: 0,
           borderSkipped: false,
-          type: 'bar',
-          order: 2,
+          borderRadius: 0,
+          stack: 'single',
+          order: 1,
         },
         {
           label: 'Load Man Hours',
-          data: loadData,
-          backgroundColor: 'rgba(139,92,246,0.75)',
-          borderRadius: 4,
+          data: loadSegPct,
+          backgroundColor: 'rgba(139,92,246,0.85)',
+          hoverBackgroundColor: 'rgba(139,92,246,1)',
+          borderWidth: 0,
           borderSkipped: false,
-          type: 'bar',
-          order: 2,
+          borderRadius: 0,
+          stack: 'single',
+          order: 1,
         },
         {
-          label: 'Available (Trend)',
-          data: availData,
-          type: 'line',
-          borderColor: 'rgba(23,59,99,0.9)',
-          backgroundColor: 'transparent',
-          borderWidth: 2,
-          pointRadius: 3,
-          pointBackgroundColor: 'rgba(23,59,99,0.9)',
-          tension: 0.3,
+          label: 'Available (Sisa)',
+          data: remainSegPct,
+          backgroundColor: 'rgba(59,130,246,0.22)',
+          hoverBackgroundColor: 'rgba(59,130,246,0.35)',
+          borderWidth: 0,
+          borderSkipped: false,
+          borderRadius: { topLeft: 5, topRight: 5, bottomLeft: 0, bottomRight: 0 },
+          stack: 'single',
           order: 1,
         },
       ]
@@ -711,53 +697,123 @@ function renderTrendChart(days, availPerDay, loadPerDay, chartMode = 'day') {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
+      animation: { duration: 500, easing: 'easeOutQuart' },
       plugins: {
         legend: {
+          position: 'top',
+          align: 'end',
           labels: {
-            color: '#6B7280',
-            font: { size: 11 },
+            color: '#374151',
+            font: { size: 11, weight: '600' },
             usePointStyle: true,
-            pointStyle: 'rectRounded',
-            padding: 16,
-            filter: (item) => item.datasetIndex < 2,
-          }
+            pointStyle: 'circle',
+            padding: 20,
+            boxWidth: 8,
+            boxHeight: 8,
+            generateLabels: (chart) => {
+              return [
+                { text: 'Actual Man Hours',  fillStyle: 'rgba(16,185,129,0.88)',  strokeStyle: 'transparent', lineWidth: 0, hidden: false, datasetIndex: 0 },
+                { text: 'Load Man Hours',    fillStyle: 'rgba(139,92,246,0.85)', strokeStyle: 'transparent', lineWidth: 0, hidden: false, datasetIndex: 1 },
+                { text: 'Available (Sisa)',  fillStyle: 'rgba(59,130,246,0.22)',  strokeStyle: 'transparent', lineWidth: 0, hidden: false, datasetIndex: 2 },
+              ];
+            }
+          },
         },
         tooltip: {
-          backgroundColor: 'rgba(14,36,57,0.95)',
-          borderColor: 'rgba(255,255,255,0.12)',
+          backgroundColor: 'rgba(15,23,42,0.96)',
+          borderColor: 'rgba(255,255,255,0.08)',
           borderWidth: 1,
-          titleColor: '#FFFFFF',
-          bodyColor: 'rgba(255,255,255,0.8)',
-          cornerRadius: 8,
-          padding: 10,
+          titleColor: '#F8FAFC',
+          bodyColor: 'rgba(248,250,252,0.85)',
+          footerColor: 'rgba(248,250,252,0.5)',
+          cornerRadius: 10,
+          padding: 14,
+          titleFont: { size: 12, weight: '700' },
+          bodyFont: { size: 11 },
           callbacks: {
-            label: (ctx) => {
-              if (ctx.datasetIndex === 2) return null;
-              return `${ctx.dataset.label}: ${ctx.parsed.y} jam`;
+            title: (items) => items[0]?.label || '',
+            beforeBody: (items) => {
+              const i = items[0]?.dataIndex;
+              if (i == null || rawAvail[i] === 0) return '';
+              return `  Kapasitas: ${rawAvail[i].toFixed(1)} jam`;
+            },
+            label: (item) => {
+              const i = item.dataIndex;
+              if (item.datasetIndex === 0) {
+                const pct = actualSegPct[i];
+                return `  ● Actual  : ${rawActual[i].toFixed(1)} jam  (${pct}%)`;
+              }
+              if (item.datasetIndex === 1) {
+                const pct = loadSegPct[i];
+                const loadPctTotal = rawAvail[i] > 0
+                  ? parseFloat(((rawLoad[i] / rawAvail[i]) * 100).toFixed(1)) : 0;
+                return `  ● Load    : ${rawLoad[i].toFixed(1)} jam  (${loadPctTotal}%)`;
+              }
+              if (item.datasetIndex === 2) {
+                const pct = remainSegPct[i];
+                const sisa = rawAvail[i] - Math.max(rawLoad[i], rawActual[i]);
+                return `  ● Sisa    : ${Math.max(0, sisa).toFixed(1)} jam  (${pct}%)`;
+              }
+              return null;
+            },
+            footer: (items) => {
+              const i = items[0]?.dataIndex;
+              if (i == null || rawAvail[i] === 0) return '';
+              const utilRate = rawAvail[i] > 0
+                ? parseFloat(((rawActual[i] / rawAvail[i]) * 100).toFixed(1)) : 0;
+              return `  Utilisasi: ${utilRate}%`;
             }
           }
-        }
+        },
       },
       scales: {
         x: {
-          ticks: { color: '#6b7280', font: { size: 10 }, maxRotation: 45 },
-          grid: { color: 'rgba(14,36,57,0.07)' },
+          stacked: true,
+          ticks: {
+            color: '#6B7280',
+            font: { size: 10 },
+            maxRotation: 45,
+            minRotation: 0,
+          },
+          grid: { display: false },
+          border: { color: 'rgba(107,114,128,0.15)' },
         },
         y: {
-          ticks: { color: '#6b7280' },
-          grid: { color: 'rgba(14,36,57,0.07)' },
-          beginAtZero: true,
-          title: { display: true, text: 'Jam', color: '#6b7280', font: { size: 11 } }
-        }
-      }
+          stacked: true,
+          min: 0,
+          max: 100,
+          ticks: {
+            color: '#6B7280',
+            font: { size: 10 },
+            callback: (v) => v + '%',
+            stepSize: 25,
+          },
+          grid: {
+            color: 'rgba(107,114,128,0.10)',
+            drawTicks: false,
+          },
+          border: { dash: [4, 4], color: 'transparent' },
+          title: {
+            display: true,
+            text: '% dari Kapasitas (Available Man Hours)',
+            color: '#9CA3AF',
+            font: { size: 10, weight: '500' },
+            padding: { bottom: 8 },
+          },
+        },
+      },
     }
   });
 }
 
+
+
+
+
 // ──────────────────────────────────────────────────────────────
 //  Technician Breakdown Table
 // ──────────────────────────────────────────────────────────────
-function renderTechBreakdown(technicians, availPerTech, loadPerTech, requirements, totalDays) {
+function renderTechBreakdown(technicians, availPerTech, loadPerTech, actualPerTech, requirements, totalDays) {
   const wrapper = document.getElementById('tech-breakdown-wrapper');
   if (!wrapper) return;
 
@@ -777,12 +833,13 @@ function renderTechBreakdown(technicians, availPerTech, loadPerTech, requirement
   const rows = technicians.map(t => {
     const available = availPerTech[t.id] || 0;
     const load      = loadPerTech[t.id] || 0;
+    const actual    = actualPerTech[t.id] || 0;
     const eff       = available > 0 ? Math.round((load / available) * 100) : 0;
     const color     = getEffColor(eff);
     const effLabel  = getEffLabel(eff);
     const barPct    = Math.min(eff, 150) / 150 * 100;
     const reqCount  = reqCountPerTech[t.id] || 0;
-    return { t, available, load, eff, color, effLabel, barPct, reqCount };
+    return { t, available, load, actual, eff, color, effLabel, barPct, reqCount };
   });
 
   rows.sort((a, b) => b.eff - a.eff);
@@ -795,12 +852,13 @@ function renderTechBreakdown(technicians, availPerTech, loadPerTech, requirement
             <th>Teknisi</th>
             <th>Available Hours</th>
             <th>Load Hours (Requirements)</th>
+            <th>Actual Hours (Closed WO)</th>
             <th>Efektivitas</th>
             <th>Status</th>
           </tr>
         </thead>
         <tbody>
-          ${rows.map(({ t, available, load, eff, color, effLabel, barPct, reqCount }) => `
+          ${rows.map(({ t, available, load, actual, eff, color, effLabel, barPct, reqCount }) => `
             <tr>
               <td>
                 <div class="d-flex align-items-center gap-3">
@@ -818,6 +876,10 @@ function renderTechBreakdown(technicians, availPerTech, loadPerTech, requirement
               <td>
                 <div class="fw-semibold">${load.toFixed(1)} jam</div>
                 <div class="text-muted small">${reqCount} requirement</div>
+              </td>
+              <td>
+                <div class="fw-semibold text-success">${actual.toFixed(1)} jam</div>
+                <div class="text-muted small">dari WO closed</div>
               </td>
               <td style="min-width:160px;">
                 <div class="d-flex align-items-center gap-2">
