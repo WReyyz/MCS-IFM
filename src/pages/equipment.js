@@ -400,6 +400,7 @@ async function showEquipmentForm(existing = null) {
               <option value="number" ${item.type === 'number' ? 'selected' : ''}>Input Angka</option>
               <option value="image" ${item.type === 'image' ? 'selected' : ''}>Upload Foto</option>
             </select>
+            ${item.type === 'number' ? `<input type="number" class="form-control w-auto" value="${item.standard || ''}" data-index="${index}" data-field="standard" placeholder="Standar (Angka)" style="max-width:120px;" />` : ''}
             <button class="btn btn-outline-danger btn-sm btn-del-task" data-index="${index}">${icons.trash}</button>
           </div>
         `).join('');
@@ -409,6 +410,9 @@ async function showEquipmentForm(existing = null) {
             const idx = e.target.dataset.index;
             const field = e.target.dataset.field;
             checklistItems[idx][field] = e.target.value;
+            if (field === 'type') {
+              renderChecklist();
+            }
           });
           el.addEventListener('input', (e) => {
             if (e.target.tagName === 'INPUT') {

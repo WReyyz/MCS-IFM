@@ -571,7 +571,15 @@ async function showCloseForm(wo) {
               </select>
             `;
           } else if (item.type === 'number') {
-            inputHtml = `<input type="number" class="form-control checklist-input" data-task="${escapeHtml(item.task)}" data-type="number" placeholder="Input Nilai..." required />`;
+            const stdLabel = item.standard ? ` (Standar: ${item.standard})` : '';
+            inputHtml = `
+              <input type="number" class="form-control checklist-input" 
+                data-task="${escapeHtml(item.task)}" 
+                data-type="number" 
+                data-standard="${item.standard || ''}" 
+                placeholder="Input Nilai..." required />
+              ${stdLabel ? `<small class="text-muted">${stdLabel}</small>` : ''}
+            `;
           } else if (item.type === 'image') {
             inputHtml = `
               <input type="file" accept="image/*" class="form-control checklist-input-file" data-task="${escapeHtml(item.task)}" required />
@@ -739,7 +747,12 @@ async function showCloseForm(wo) {
           overlay.querySelectorAll('.checklist-input').forEach(input => {
             const val = input.value;
             if (!val) allFilled = false;
-            checklistText += `- ${input.dataset.task}: ${val}\\n`;
+            
+            if (input.dataset.type === 'number' && input.dataset.standard) {
+              checklistText += `- ${input.dataset.task}: ${val} (Standar: ${input.dataset.standard})\\n`;
+            } else {
+              checklistText += `- ${input.dataset.task}: ${val}\\n`;
+            }
           });
           
           checklistFiles.forEach(input => {

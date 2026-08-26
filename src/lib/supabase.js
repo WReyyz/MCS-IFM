@@ -120,29 +120,67 @@ export async function bulkUpdateRows(table, ids, updates, pkField = 'id') {
 }
 
 // ---- DASHBOARD AGGREGATIONS ----
-export async function getDashboardStats() {
-  const [equipRes, woRes, schedRes, profilesRes] = await Promise.all([
+export async function getDashboardStats(timeRange = 'monthly') {
+  const [equipRes, woRes, schedRes, profilesRes, matRes] = await Promise.all([
     supabase.from('equipment').select('idAset, kondisi'),
-    supabase.from('work_orders').select('id, category, status, man_hours_estimated, man_hours_actual, opened_at, closed_at'),
+    supabase.from('work_orders').select('id, category, type, status, man_hours_estimated, man_hours_actual, opened_at, closed_at, assigned_to, equipment_id, notes'),
     supabase.from('technician_schedule').select('id, profile_id, status, schedule_date').eq('schedule_date', new Date().toISOString().split('T')[0]),
-    supabase.from('profiles').select('id, role').eq('role', 'technician'),
+    supabase.from('profiles').select('id, role, full_name').eq('role', 'technician'),
+    supabase.from('material_stock').select('id, name, part_number, quantity, min_stock')
   ]);
 
   const equipment = equipRes.data || [];
   const workOrders = woRes.data || [];
   const schedules = schedRes.data || [];
   const technicians = profilesRes.data || [];
+  const materials = matRes.data || [];
 
   const allWorkOrders = workOrders;
 
   const now = new Date();
-  const thisMonth = now.getMonth();
-  const thisYear = now.getFullYear();
-  const woThisMonth = allWorkOrders.filter(wo => {
-    if (!wo.opened_at) return false;
-    const d = new Date(wo.opened_at);
-    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-  });
+  
+  let currentPeriodStart, currentPeriodEnd;
+  let prevPeriodStart, prevPeriodEnd;
+
+  if (timeRange === 'yearly') {
+    currentPeriodStart = new Date(now.getFullYear(), 0, 1);
+    currentPeriodEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+    prevPeriodStart = new Date(now.getFullYear() - 1, 0, 1);
+    prevPeriodEnd = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59);
+  } else if (timeRange === 'weekly') {
+    currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+    currentPeriodStart.setHours(0,0,0,0);
+    currentPeriodEnd = new Date(now);
+    currentPeriodEnd.setHours(23,59,59,999);
+    
+    prevPeriodStart = new Date(currentPeriodStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+    prevPeriodEnd = new Date(currentPeriodStart.getTime() - 1);
+  } else if (timeRange === 'today') {
+    currentPeriodStart = new Date(now);
+    currentPeriodStart.setHours(0,0,0,0);
+    currentPeriodEnd = new Date(now);
+    currentPeriodEnd.setHours(23,59,59,999);
+    
+    prevPeriodStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    prevPeriodStart.setHours(0,0,0,0);
+    prevPeriodEnd = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    prevPeriodEnd.setHours(23,59,59,999);
+  } else {
+    // monthly
+    currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    currentPeriodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    prevPeriodStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    prevPeriodEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+  }
+
+  const isWithinPeriod = (dateString, start, end) => {
+    if (!dateString) return false;
+    const d = new Date(dateString);
+    return d >= start && d <= end;
+  };
+
+  const woCurrent = allWorkOrders.filter(wo => isWithinPeriod(wo.opened_at, currentPeriodStart, currentPeriodEnd));
+  const woPrevious = allWorkOrders.filter(wo => isWithinPeriod(wo.opened_at, prevPeriodStart, prevPeriodEnd));
 
   const todayStr = now.toISOString().split('T')[0];
   const woCorrectiveToday = allWorkOrders.filter(wo => wo.category === 'corrective' && wo.opened_at && wo.opened_at.startsWith(todayStr)).length;
@@ -153,21 +191,123 @@ export async function getDashboardStats() {
   const totalEquipment = equipment.length;
   const activeEquipment = equipment.filter(e => e.kondisi === 'operational').length;
   const woOpen = allWorkOrders.filter(wo => wo.status !== 'closed').length;
-  const woClosed = woThisMonth.filter(wo => wo.status === 'closed').length;
-  const woOpenMonth = woThisMonth.filter(wo => wo.status !== 'closed').length;
+  const woClosed = woCurrent.filter(wo => wo.status === 'closed').length;
+  const woOpenMonth = woCurrent.filter(wo => wo.status !== 'closed').length;
 
-  const totalEstimated = allWorkOrders.reduce((s, wo) => s + (parseFloat(wo.man_hours_estimated) || 0), 0);
-  const totalActual = allWorkOrders.reduce((s, wo) => s + (parseFloat(wo.man_hours_actual) || 0), 0);
+  const totalEstimated = woCurrent.reduce((s, wo) => s + (parseFloat(wo.man_hours_estimated) || 0), 0);
+  const totalActual = woCurrent.reduce((s, wo) => s + (parseFloat(wo.man_hours_actual) || 0), 0);
   const manHoursEffectiveness = totalEstimated > 0 ? Math.round((totalActual / totalEstimated) * 100) : 0;
 
   const onDuty = schedules.filter(s => s.status === 'on_duty').length;
   const offDuty = technicians.length - onDuty;
 
+  // 1. Material low stock
+  const lowStockMaterials = materials.filter(m => m.quantity <= m.min_stock);
+
+  // 2. Number of WOs (total)
+  const totalWOs = woCurrent.length;
+
+  // 3. Number of Preventive and Corrective
+  const totalPreventive = woCurrent.filter(wo => wo.type === 'preventive').length;
+  const totalCorrective = woCurrent.filter(wo => wo.type === 'corrective').length;
+
+  // 4. Status breakdown by type for current period
+  const preventiveCurrent = woCurrent.filter(wo => wo.type === 'preventive');
+  const correctiveCurrent = woCurrent.filter(wo => wo.type === 'corrective');
+
+  const calculateTrend = (current, previous) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return Math.round(((current - previous) / previous) * 100);
+  };
+
+  const trendTotal = calculateTrend(woCurrent.length, woPrevious.length);
+  const trendPreventive = calculateTrend(preventiveCurrent.length, woPrevious.filter(w => w.type === 'preventive').length);
+  const trendCorrective = calculateTrend(correctiveCurrent.length, woPrevious.filter(w => w.type === 'corrective').length);
+
+  const preventiveMonthStatus = {
+    total: preventiveCurrent.length,
+    open: preventiveCurrent.filter(wo => wo.status === 'open' || wo.status === 'in_progress').length,
+    hold: preventiveCurrent.filter(wo => wo.status === 'hold').length,
+    closed: preventiveCurrent.filter(wo => wo.status === 'closed').length
+  };
+
+  const correctiveMonthStatus = {
+    total: correctiveCurrent.length,
+    open: correctiveCurrent.filter(wo => wo.status === 'open' || wo.status === 'in_progress').length,
+    hold: correctiveCurrent.filter(wo => wo.status === 'hold').length,
+    closed: correctiveCurrent.filter(wo => wo.status === 'closed').length
+  };
+
+  // 5. Man power effectiveness
+  const technicianStats = technicians.map(tech => {
+    const techWOs = allWorkOrders.filter(wo => wo.assigned_to === tech.id);
+    const est = techWOs.reduce((s, wo) => s + (parseFloat(wo.man_hours_estimated) || 0), 0);
+    const act = techWOs.reduce((s, wo) => s + (parseFloat(wo.man_hours_actual) || 0), 0);
+    const effectiveness = est > 0 ? Math.round((act / est) * 100) : 0;
+    return {
+      name: tech.full_name,
+      effectiveness,
+      woCount: techWOs.length
+    };
+  });
+
+  // 6. Equipment Performance (based on closed preventive WOs)
+  // Logic: For each equipment, find its latest closed preventive WO. Parse the notes for "(Standar: X)" and compare actual value to standard.
+  const preventiveWOs = allWorkOrders.filter(wo => wo.type === 'preventive');
+  const equipmentPerformance = [];
+  const equipmentIds = [...new Set(preventiveWOs.filter(w => w.status === 'closed' && w.equipment_id).map(w => w.equipment_id))];
+
+  equipmentIds.forEach(eqId => {
+    // get latest closed preventive WO for this eq
+    const wosForEq = preventiveWOs.filter(w => w.status === 'closed' && w.equipment_id === eqId);
+    wosForEq.sort((a, b) => new Date(b.closed_at) - new Date(a.closed_at));
+    const latestWO = wosForEq[0];
+
+    const notes = latestWO.notes || '';
+    let totalScore = 0;
+    let scoredItemsCount = 0;
+
+    // Parse lines like: "- Suhu Mesin: 45 (Standar: 50)"
+    const lines = notes.split('\\n');
+    lines.forEach(line => {
+      const match = line.match(/- .*:\s*([\d.]+)\s*\(Standar:\s*([\d.]+)\)/i);
+      if (match) {
+        const actual = parseFloat(match[1]);
+        const std = parseFloat(match[2]);
+        if (!isNaN(actual) && !isNaN(std) && std !== 0) {
+          let score = (actual / std) * 100;
+          if (score > 100) score = 100; // Cap at 100%
+          totalScore += score;
+          scoredItemsCount++;
+        }
+      }
+    });
+
+    if (scoredItemsCount > 0) {
+      const avgScore = Math.round(totalScore / scoredItemsCount);
+      const eqObj = equipment.find(e => e.idAset === eqId);
+      equipmentPerformance.push({
+        idAset: eqId,
+        namaEquipment: eqObj ? eqObj.namaEquipment : eqId,
+        score: avgScore,
+        last_pm_date: latestWO.closed_at
+      });
+    }
+  });
+
+
+
+  // Overall WO status counts
+  const woOpenCount = allWorkOrders.filter(wo => wo.status === 'open' || wo.status === 'in_progress').length;
+  const woHoldCount = allWorkOrders.filter(wo => wo.status === 'hold').length;
+  const woClosedCount = allWorkOrders.filter(wo => wo.status === 'closed').length;
+
   return {
     totalEquipment,
     activeEquipment,
-    woOpen,
-    woClosed,
+    woOpen: woOpenCount,
+    woHold: woHoldCount,
+    woClosed: woClosedCount,
     woOpenMonth,
     woCorrectiveToday,
     woPreventiveToday,
@@ -185,6 +325,17 @@ export async function getDashboardStats() {
       breakdown: equipment.filter(e => e.kondisi === 'breakdown').length,
       decommissioned: equipment.filter(e => e.kondisi === 'decommissioned').length,
     },
+    lowStockMaterials,
+    totalWOs,
+    totalPreventive,
+    totalCorrective,
+    trendTotal,
+    trendPreventive,
+    trendCorrective,
+    preventiveMonthStatus,
+    correctiveMonthStatus,
+    technicianStats,
+    equipmentPerformance
   };
 }
 
@@ -352,4 +503,69 @@ export async function updateUserPassword(newPassword) {
   const { data, error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) throw error;
   return data;
+}
+
+export async function getWoDailyTrendByType(timeRange = 'monthly') {
+  const [woRes] = await Promise.all([
+    supabase.from('work_orders').select('type, opened_at, closed_at, status')
+  ]);
+
+  const allWos = woRes.data || [];
+  const now = new Date();
+  
+  const dataPoints = [];
+  
+  const countActive = (type, dateStr) => allWos.filter(wo => {
+      if (wo.type !== type || !wo.opened_at) return false;
+      const opened = wo.opened_at.split('T')[0];
+      if (opened > dateStr) return false; 
+      if (wo.status === 'closed' && wo.closed_at) {
+          const closed = wo.closed_at.split('T')[0];
+          if (closed <= dateStr) return false;
+      }
+      return true;
+  }).length;
+
+  if (timeRange === 'yearly') {
+    for (let m = 0; m < 12; m++) {
+      let endOfMonth = new Date(now.getFullYear(), m + 1, 0);
+      if (m === now.getMonth()) endOfMonth = now;
+      if (m > now.getMonth()) continue;
+      
+      const dateStr = `${now.getFullYear()}-${String(m + 1).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
+      
+      dataPoints.push({
+        label: new Date(now.getFullYear(), m, 1).toLocaleDateString('id-ID', { month: 'short' }),
+        preventive: countActive('preventive', dateStr),
+        corrective: countActive('corrective', dateStr)
+      });
+    }
+  } else if (timeRange === 'weekly' || timeRange === 'today') {
+    for (let d = 6; d >= 0; d--) {
+      const dayDate = new Date(now.getTime() - d * 24 * 60 * 60 * 1000);
+      const dateStr = `${dayDate.getFullYear()}-${String(dayDate.getMonth() + 1).padStart(2, '0')}-${String(dayDate.getDate()).padStart(2, '0')}`;
+      
+      dataPoints.push({
+        label: `${dayDate.getDate()} ${dayDate.toLocaleDateString('id-ID', { month: 'short' })}`,
+        preventive: countActive('preventive', dateStr),
+        corrective: countActive('corrective', dateStr)
+      });
+    }
+  } else {
+    // monthly
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const daysInMonth = now.getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      
+      dataPoints.push({
+        label: `${d} ${now.toLocaleDateString('id-ID', { month: 'short' })}`,
+        preventive: countActive('preventive', dateStr),
+        corrective: countActive('corrective', dateStr)
+      });
+    }
+  }
+
+  return dataPoints;
 }
