@@ -22,6 +22,10 @@ import { renderTechWoList } from './pages/tech-wo-list.js';
 import { renderTechCreateWo } from './pages/tech-create-wo.js';
 import { renderTechInbox } from './pages/tech-inbox.js';
 import { renderTechProfile } from './pages/tech-profile.js';
+import { renderTechWoChecklist } from './pages/tech-wo-checklist.js';
+
+// Pages - Inspector / Approval
+import { renderApproval } from './pages/approval.js';
 
 // Setup routes
 router
@@ -39,11 +43,13 @@ router
   .on('/user-controller', renderUserController)
   .on('/admin-broadcast', renderAdminBroadcast)
   .on('/profile', renderProfile)
+  .on('/approval', renderApproval)
   // Technician routes
   .on('/tech-wo-list', renderTechWoList)
   .on('/tech-create-wo', renderTechCreateWo)
   .on('/tech-inbox', renderTechInbox)
   .on('/tech-profile', renderTechProfile)
+  .on('/tech-wo-checklist', renderTechWoChecklist)
   .on('/404', () => {
     document.getElementById('app').innerHTML = `
       <div class="d-flex align-items-center justify-content-center min-vh-100 bg-light">

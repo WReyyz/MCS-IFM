@@ -8,9 +8,10 @@ export const EQUIPMENT_STATUS = {
 
 // Work Order statuses
 export const WO_STATUS = {
-  open:   { label: 'Open',   color: '#2D6A9F', bg: 'rgba(45,106,159,0.12)'  },
-  hold:   { label: 'Hold',   color: '#E8920A', bg: 'rgba(232,146,10,0.12)'  },
-  closed: { label: 'Closed', color: '#2E8B57', bg: 'rgba(46,139,87,0.12)'   },
+  open:               { label: 'Open',             color: '#2D6A9F', bg: 'rgba(45,106,159,0.12)'  },
+  hold:               { label: 'Hold',             color: '#E8920A', bg: 'rgba(232,146,10,0.12)'  },
+  pending_inspection: { label: 'Pending Approval', color: '#6E4FC8', bg: 'rgba(110,79,200,0.12)'  },
+  closed:             { label: 'Closed',           color: '#2E8B57', bg: 'rgba(46,139,87,0.12)'   },
 };
 
 // WO Priority
@@ -77,8 +78,9 @@ export const SCHEDULE_STATUS = {
 
 // Roles
 export const ROLES = {
-  admin:      { label: 'Admin',   color: '#2D6A9F', bg: 'rgba(45,106,159,0.12)'  },
-  technician: { label: 'Teknisi', color: '#1A2230', bg: 'rgba(26,34,48,0.10)'    },
+  admin:      { label: 'Admin',     color: '#2D6A9F', bg: 'rgba(45,106,159,0.12)'  },
+  inspector:  { label: 'Inspector', color: '#E8920A', bg: 'rgba(232,146,10,0.12)'  },
+  technician: { label: 'Teknisi',   color: '#1A2230', bg: 'rgba(26,34,48,0.10)'    },
 };
 
 // Technician Skills

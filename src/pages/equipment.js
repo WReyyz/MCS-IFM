@@ -394,6 +394,7 @@ async function showEquipmentForm(existing = null) {
         }
         checklistContainer.innerHTML = checklistItems.map((item, index) => `
           <div class="d-flex gap-2 mb-2 align-items-center">
+            <input type="text" class="form-control" style="width: 140px;" value="${escapeHtml(item.category || '')}" data-index="${index}" data-field="category" placeholder="Kategori" title="Kategori Task (misal: General check)" />
             <input type="text" class="form-control flex-grow-1" value="${escapeHtml(item.task || '')}" data-index="${index}" data-field="task" placeholder="Nama Task" />
             <select class="form-select w-auto" data-index="${index}" data-field="type">
               <option value="boolean" ${item.type === 'boolean' ? 'selected' : ''}>Ya/Tidak</option>
@@ -435,7 +436,7 @@ async function showEquipmentForm(existing = null) {
       renderChecklist();
       
       overlay.querySelector('#btn-add-checklist').addEventListener('click', () => {
-        checklistItems.push({ task: '', type: 'boolean' });
+        checklistItems.push({ category: '', task: '', type: 'boolean' });
         renderChecklist();
       });
 

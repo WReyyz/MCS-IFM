@@ -4,20 +4,21 @@ import { icons } from './icons.js';
 
 const ALL_MENU_ITEMS = [
   { section: 'UTAMA' },
-  { path: '/', label: 'Dashboard', icon: 'layoutDashboard' },
-  { path: '/equipment', label: 'Daftar Equipment', icon: 'cpu', adminOnly: true },
+  { path: '/', label: 'Dashboard', icon: 'layoutDashboard', roles: ['admin', 'inspector'] },
+  { path: '/equipment', label: 'Daftar Equipment', icon: 'cpu', roles: ['admin', 'inspector'] },
   { section: 'PEMELIHARAAN' },
-  { path: '/preventive-maintenance', label: 'Preventive Maintenance', icon: 'calendarCheck' },
-  { path: '/work-order', label: 'Work Order', icon: 'clipboardList' },
-  { path: '/material-stock', label: 'Stok Material', icon: 'package' },
-  { path: '/tools', label: 'Tools', icon: 'wrench' },
-  { path: '/plan', label: 'Plan', icon: 'ganttChart' },
-  { section: 'MANAJEMEN', adminOnly: true },
-  { path: '/technician', label: 'Jadwal & Teknisi', icon: 'calendarCheck', adminOnly: true },
-  { path: '/user-controller', label: 'Kontrol Pengguna', icon: 'shield', adminOnly: true },
-  { path: '/admin-broadcast', label: 'Broadcast Notifikasi', icon: 'broadcast', adminOnly: true },
-  { section: 'AKUN', adminOnly: true },
-  { path: '/profile', label: 'Profil Saya', icon: 'user', adminOnly: true },
+  { path: '/preventive-maintenance', label: 'Preventive Maintenance', icon: 'calendarCheck', roles: ['admin', 'inspector'] },
+  { path: '/approval', label: 'Approval Checklist', icon: 'shieldCheck', roles: ['admin', 'inspector'] },
+  { path: '/work-order', label: 'Work Order', icon: 'clipboardList', roles: ['admin', 'inspector'] },
+  { path: '/material-stock', label: 'Stok Material', icon: 'package', roles: ['admin', 'inspector'] },
+  { path: '/tools', label: 'Tools', icon: 'wrench', roles: ['admin', 'inspector'] },
+  { path: '/plan', label: 'Plan', icon: 'ganttChart', roles: ['admin', 'inspector'] },
+  { section: 'MANAJEMEN' },
+  { path: '/technician', label: 'Jadwal & Teknisi', icon: 'calendarCheck', roles: ['admin'] },
+  { path: '/user-controller', label: 'Kontrol Pengguna', icon: 'shield', roles: ['admin'] },
+  { path: '/admin-broadcast', label: 'Broadcast Notifikasi', icon: 'broadcast', roles: ['admin'] },
+  { section: 'AKUN' },
+  { path: '/profile', label: 'Profil Saya', icon: 'user', roles: ['admin', 'inspector'] },
 ];
 
 export function renderSidebar(container) {
@@ -89,12 +90,15 @@ export function renderSidebar(container) {
 async function loadSidebarProfile() {
   try {
     const profile = await getCurrentProfile();
-    const isAdmin = profile?.role === 'admin';
+    const userRole = profile?.role || 'user';
     const currentPath = window.location.hash.slice(1) || '/';
     
     const nav = document.getElementById('sidebar-nav');
     if (nav) {
-      let filteredItems = ALL_MENU_ITEMS.filter(item => !item.adminOnly || isAdmin);
+      let filteredItems = ALL_MENU_ITEMS.filter(item => {
+        if (item.section) return true;
+        return item.roles && item.roles.includes(userRole);
+      });
       
       const finalItems = [];
       for (let i = 0; i < filteredItems.length; i++) {

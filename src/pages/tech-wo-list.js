@@ -215,7 +215,11 @@ function showWODetail(wo) {
       overlay.querySelector('#detail-close').addEventListener('click', close);
       overlay.querySelector('#detail-close-wo')?.addEventListener('click', () => {
         close();
-        showCloseWOForm(wo);
+        if (wo.type === 'preventive') {
+          window.location.hash = `/tech-wo-checklist?id=${wo.id}`;
+        } else {
+          showCloseWOForm(wo);
+        }
       });
     }
   });
