@@ -8,6 +8,7 @@ const ALL_MENU_ITEMS = [
   { path: '/equipment', label: 'Daftar Equipment', icon: 'cpu', roles: ['admin', 'inspector'] },
   { section: 'PEMELIHARAAN' },
   { path: '/preventive-maintenance', label: 'Preventive Maintenance', icon: 'calendarCheck', roles: ['admin', 'inspector'] },
+  { path: '/mds-templates', label: 'Master Template MDS', icon: 'clipboardCheck', roles: ['admin'] },
   { path: '/approval', label: 'Approval Checklist', icon: 'shieldCheck', roles: ['admin', 'inspector'] },
   { path: '/work-order', label: 'Work Order', icon: 'clipboardList', roles: ['admin', 'inspector'] },
   { path: '/material-stock', label: 'Stok Material', icon: 'package', roles: ['admin', 'inspector'] },

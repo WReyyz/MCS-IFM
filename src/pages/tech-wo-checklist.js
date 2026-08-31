@@ -26,20 +26,40 @@ export async function renderTechWoChecklist() {
 
     if (error || !wo) throw error || new Error('WO Not Found');
 
-    let checklist = wo.equipment?.checklist || [];
-    if (!Array.isArray(checklist)) checklist = [];
+    // Ambil mds_template_id langsung dari work_orders (bukan via join preventive_maintenance)
+    const templateId = wo.mds_template_id || wo.preventive_maintenance?.mds_template_id;
 
-    // Filter tasks based on PM interval if this is a preventive WO
-    if (wo.preventive_maintenance && wo.preventive_maintenance.interval_days) {
-      const pmInterval = wo.preventive_maintenance.interval_days;
-      checklist = checklist.filter(task => {
-        // If task doesn't specify intervals, assume it applies to all
-        if (!task.intervals || !Array.isArray(task.intervals) || task.intervals.length === 0) {
-          return true;
-        }
-        return task.intervals.includes(pmInterval);
-      });
+    let checklist = [];
+    let templateItemsData = [];
+
+    if (wo.type === 'preventive' && templateId) {
+      const { data: templateItems, error: tiErr } = await supabase
+        .from('mds_template_items')
+        .select('*')
+        .eq('template_id', templateId)
+        .order('order_idx', { ascending: true });
+
+      if (tiErr) console.warn('Gagal load template items:', tiErr.message);
+        
+      if (templateItems && templateItems.length > 0) {
+        templateItemsData = templateItems;
+        checklist = templateItems.map(ti => ({
+          id:       ti.id,
+          task:     ti.activity_title,
+          category: ti.section,
+          type:     ti.needs_input ? 'measurement' : 'checkbox',
+          unit:     ti.expected_unit,
+          desc:     ti.description,
+        }));
+      } else {
+        // Template ada tapi belum ada items
+        checklist = [];
+      }
+    } else {
+      checklist = wo.equipment?.checklist || [];
+      if (!Array.isArray(checklist)) checklist = [];
     }
+
 
     const groupedTasks = {};
     checklist.forEach(item => {
@@ -79,6 +99,7 @@ function renderChecklistUI(content, wo, groupedTasks, profile) {
         <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom checklist-row" data-task="${escapeHtml(task.task)}" data-type="${task.type}">
           <div class="me-3" style="flex: 1;">
             <div class="text-secondary small mb-1">${letter}. ${escapeHtml(task.task)}</div>
+            <input type="hidden" class="cl-item-id" value="${task.id || ''}">
             ${task.type === 'number' ? `
               <div class="d-flex align-items-center gap-2">
                 <input type="number" class="form-control form-control-sm cl-number-val" style="width: 80px;" placeholder="Nilai" />
@@ -252,11 +273,15 @@ function renderChecklistUI(content, wo, groupedTasks, profile) {
 
       if (!result) allFilled = false;
 
+      const itemId = row.querySelector('.cl-item-id')?.value || null;
+
       results.push({
+        item_id: itemId,
         task: taskName,
         type: type,
         result: result, // pass/fail
-        value: val
+        value: val,
+        category: row.closest('.mb-4').querySelector('h6').textContent // Get category from header
       });
     });
 
@@ -268,9 +293,24 @@ function renderChecklistUI(content, wo, groupedTasks, profile) {
     const notes = content.querySelector('#cl-notes').value.trim();
 
     try {
-      // Update WO Status to pending_inspection
+      // Simpan hasil ke wo_checklist_results jika menggunakan tabel relasi (opsional sesuai PRD)
+      if (wo.type === 'preventive') {
+         const dbResults = results.map(r => ({
+            wo_id: wo.id,
+            item_id: r.item_id,
+            task_name: r.task,
+            category: r.category,
+            task_type: r.type,
+            result: r.value || r.result,
+            evidence_url: r.type === 'image' ? r.value : null
+         }));
+         const { error: insertErr } = await supabase.from('wo_checklist_results').insert(dbResults);
+         if (insertErr) console.warn("Gagal insert ke wo_checklist_results", insertErr);
+      }
+
+      // Update WO Status to menunggu_approval
       await updateRow('work_orders', wo.id, {
-        status: 'pending_inspection',
+        status: 'menunggu_approval',
         assigned_to: profile.id, // Ensure tech is assigned
         checklist_result: results,
         notes: notes,

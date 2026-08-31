@@ -143,7 +143,12 @@ function showWODetail(wo) {
   const cat = WO_CATEGORY[wo.category] || WO_CATEGORY.OTHER;
   const equipName = wo.equipment?.namaEquipment || wo.equipment_id || '-';
   const creatorName = wo.profiles?.full_name || 'Admin';
-  const canClose = wo.status === 'open' || wo.status === 'hold';
+
+  // WO PM: bisa isi MDS jika status diploting atau menunggu_approval (untuk revisi)
+  const isPreventive = wo.type === 'preventive';
+  const canFillMDS   = isPreventive && ['diploting', 'revisi', 'menunggu_approval'].includes(wo.status);
+  // WO Corrective: bisa di-close jika open / hold
+  const canClose     = !isPreventive && (wo.status === 'open' || wo.status === 'hold');
 
   showModal({
     title: `Detail Work Order`,
@@ -205,21 +210,29 @@ function showWODetail(wo) {
           <div class="small text-secondary mb-1">Catatan</div>
           <div class="small text-dark">${escapeHtml(wo.notes)}</div>
         </div>` : ''}
+
+        ${canFillMDS ? `
+        <div class="alert alert-success py-2 px-3 mb-0" style="border-radius:8px;font-size:0.85rem;">
+          📋 WO ini memiliki form MDS yang perlu diisi. Klik tombol di bawah untuk memulai.
+        </div>` : ''}
       </div>
     `,
     footer: `
       <button class="btn btn-outline-secondary" id="detail-close">Tutup</button>
-      ${canClose ? `<button class="btn btn-success" id="detail-close-wo">Selesaikan WO</button>` : ''}
+      ${canFillMDS  ? `<button class="btn btn-success" id="detail-mds">📋 Isi Form MDS</button>` : ''}
+      ${canClose    ? `<button class="btn btn-success" id="detail-close-wo">Selesaikan WO</button>` : ''}
     `,
     onMount: (overlay, close) => {
       overlay.querySelector('#detail-close').addEventListener('click', close);
+
+      overlay.querySelector('#detail-mds')?.addEventListener('click', () => {
+        close();
+        window.location.hash = `/tech-wo-checklist?id=${wo.id}`;
+      });
+
       overlay.querySelector('#detail-close-wo')?.addEventListener('click', () => {
         close();
-        if (wo.type === 'preventive') {
-          window.location.hash = `/tech-wo-checklist?id=${wo.id}`;
-        } else {
-          showCloseWOForm(wo);
-        }
+        showCloseWOForm(wo);
       });
     }
   });

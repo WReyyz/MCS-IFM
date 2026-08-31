@@ -42,8 +42,17 @@ export async function renderWorkOrder() {
           <input type="text" class="form-control form-control-sm" id="wo-search" placeholder="Cari WO..." />
         </div>
         <div class="filter-group">
+          <select class="form-select form-select-sm" id="filter-wo-type" style="min-width:140px">
+            <option value="">Semua Tipe</option>
+            <option value="corrective">Corrective</option>
+            <option value="preventive">Preventive (PM)</option>
+          </select>
           <select class="form-select form-select-sm" id="filter-wo-status" style="min-width:140px">
             <option value="">Semua Status</option>
+            <option value="generated">Generated (Menunggu Ploting)</option>
+            <option value="diploting">Diploting</option>
+            <option value="menunggu_approval">Menunggu Approval</option>
+            <option value="revisi">Revisi</option>
             ${Object.entries(WO_STATUS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}
           </select>
           <select class="form-select form-select-sm" id="filter-wo-priority" style="min-width:140px">
@@ -88,6 +97,7 @@ export async function renderWorkOrder() {
   }
 
   document.getElementById('wo-search').addEventListener('input', debounce(filterAndRender));
+  document.getElementById('filter-wo-type').addEventListener('change', filterAndRender);
   document.getElementById('filter-wo-status').addEventListener('change', filterAndRender);
   document.getElementById('filter-wo-priority').addEventListener('change', filterAndRender);
   document.getElementById('filter-wo-category').addEventListener('change', filterAndRender);
@@ -156,9 +166,8 @@ async function loadWOs() {
 
     // Build fetch options
     const woOptions = {
-      select: '*, assignee:profiles!assigned_to(full_name), creator:profiles!requested_by(full_name)',
-      order: { column: 'created_at', ascending: false },
-      filters: [{ column: 'type', value: 'corrective' }] // Hanya tampilkan corrective di menu ini
+      select: '*, assignee:profiles!assigned_to(full_name), creator:profiles!requested_by(full_name), wo_assignees(profiles!wo_assignees_technician_id_fkey(full_name))',
+      order: { column: 'created_at', ascending: false }
     };
 
     // Technician (fallback just in case they access this route)
@@ -178,12 +187,14 @@ async function loadWOs() {
 
 function filterAndRender() {
   const search = (document.getElementById('wo-search')?.value || '').toLowerCase();
+  const type = document.getElementById('filter-wo-type')?.value || '';
   const status = document.getElementById('filter-wo-status')?.value || '';
   const priority = document.getElementById('filter-wo-priority')?.value || '';
   const category = document.getElementById('filter-wo-category')?.value || '';
 
   let filtered = allWOs.filter(wo => {
     if (search && !`${wo.wo_number} ${wo.description} ${wo.category || ''}`.toLowerCase().includes(search)) return false;
+    if (type && wo.type !== type) return false;
     if (status && wo.status !== status) return false;
     if (priority && wo.priority !== priority) return false;
     if (category && wo.category !== category) return false;
@@ -216,16 +227,19 @@ function renderTable(data) {
         <tbody>
           ${data.map(wo => {
             const cat = WO_CATEGORY[wo.category] || WO_CATEGORY.OTHER;
+            const techName = (wo.wo_assignees && wo.wo_assignees.length > 0)
+              ? wo.wo_assignees.map(a => a.profiles?.full_name).join(', ')
+              : (wo.assignee?.full_name || '-');
             return `
             <tr>
               ${isAdmin ? `<td class="col-checkbox"><input type="checkbox" class="form-check-input row-checkbox" value="${wo.id}" ${selectedWOIds.includes(wo.id) ? 'checked' : ''} /></td>` : ''}
-              <td><span class="wo-number">${escapeHtml(wo.wo_number)}</span></td>
+              <td><span class="wo-number">${escapeHtml(wo.wo_number)}</span><br><small class="text-muted">${wo.type.toUpperCase()}</small></td>
               <td>${badge(cat.label, cat.color, cat.bg)}</td>
               <td>${badge(WO_PRIORITY[wo.priority]?.label, WO_PRIORITY[wo.priority]?.color, WO_PRIORITY[wo.priority]?.bg)}</td>
-              <td>${badge(WO_STATUS[wo.status]?.label, WO_STATUS[wo.status]?.color, WO_STATUS[wo.status]?.bg)}</td>
+              <td>${badge(WO_STATUS[wo.status]?.label || wo.status, WO_STATUS[wo.status]?.color || 'secondary', WO_STATUS[wo.status]?.bg || 'bg-secondary')}</td>
               <td>${wo.creator?.full_name || 'Admin'}</td>
               <td>${formatDate(wo.opened_at)}</td>
-              <td>${wo.status === 'closed' ? (wo.assignee?.full_name || '-') : '-'}</td>
+              <td>${wo.status === 'closed' ? techName : '-'}</td>
               <td>${wo.closed_at ? formatDate(wo.closed_at) : '-'}</td>
               <td><small class="text-muted">${wo.man_hours_estimated || 0}h est</small> <span class="wo-man-hours">${wo.man_hours_actual || 0}h</span></td>
               <td>${wo.evidence_url ? `<img src="${wo.evidence_url}" style="width:36px;height:36px;border-radius:4px;cursor:pointer;object-fit:cover" class="wo-evidence-preview-trigger" data-img="${wo.id}" title="Klik untuk memperbesar" />` : '-'}</td>
@@ -235,8 +249,11 @@ function renderTable(data) {
                     <button class="btn btn-outline-warning btn-sm btn-icon" data-edit="${wo.id}" title="Edit">${icons.edit}</button>
                     <button class="btn btn-outline-danger btn-sm btn-icon" data-delete="${wo.id}" title="Hapus">${icons.trash}</button>
                   ` : ''}
-                  ${(wo.status === 'open' || wo.status === 'hold') ? `
-                    <button class="btn btn-outline-success btn-sm btn-icon" data-close="${wo.id}" title="Close WO">${icons.check}</button>
+                  ${(isAdmin && wo.status === 'generated') ? `
+                    <button class="btn btn-outline-primary btn-sm" data-plot="${wo.id}" title="Plotting Teknisi">Ploting</button>
+                  ` : ''}
+                  ${(wo.status === 'open' || wo.status === 'hold' || wo.status === 'diploting' || wo.status === 'revisi') ? `
+                    <button class="btn btn-outline-success btn-sm btn-icon" data-close="${wo.id}" title="Eksekusi WO">${icons.check}</button>
                   ` : ''}
                 </div>
               </td>
@@ -280,6 +297,14 @@ function renderTable(data) {
           }
         });
       }
+    });
+  });
+
+  // Admin: Ploting WO PM
+  wrapper.querySelectorAll('[data-plot]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const wo = allWOs.find(w => w.id === btn.dataset.plot);
+      if (wo) showPlotingForm(wo);
     });
   });
 
@@ -801,77 +826,96 @@ async function showCloseForm(wo) {
                 const nextDueStr = nextDate.toISOString().split('T')[0];
                 
                 await updateRow('preventive_maintenance', pm.id, {
-                  status: 'scheduled',
                   last_done: today,
                   next_due: nextDueStr
                 });
-                
-                // Generate next WO
-                const newWoData = {
-                  wo_number: 'WO-' + Date.now().toString().slice(-6), // quick fallback
-                  equipment_id: pm.equipment_id,
-                  pm_id: pm.id,
-                  type: 'preventive',
-                  priority: 'medium',
-                  status: 'open',
-                  assigned_to: pm.assigned_to,
-                  description: `[PM] ${pm.title}`,
-                  opened_at: new Date(nextDueStr).toISOString()
-                };
-                await insertRow('work_orders', newWoData);
               }
             } catch (err) {
-              console.error('Failed to update PM schedule', err);
+              console.error('Failed to update PM Next Due', err);
             }
           }
           
-          showToast('Work Order berhasil ditutup', 'success');
+          showToast('WO berhasil ditutup', 'success');
           close();
           await loadWOs();
         } catch (err) {
-          showToast('Gagal menutup WO', 'error');
+          showToast(err.message || 'Gagal menyimpan', 'error');
         }
       });
     }
   });
 }
 
-// ---- TECHNICIAN: Hold WO Form ----
 function showHoldForm(wo) {
   showModal({
     title: `Hold Work Order - ${wo.wo_number}`,
     body: `
-      <p class="text-muted mb-4">
-        Berikan alasan mengapa WO ini perlu di-hold (contoh: butuh material, area tidak bisa diakses, dll).
-      </p>
       <div class="mb-3">
         <label class="form-label">Alasan Hold *</label>
-        <textarea class="form-control" id="hold-notes" placeholder="Jelaskan alasan hold..." required></textarea>
+        <textarea class="form-control" id="hold-reason" placeholder="Contoh: Menunggu sparepart..."></textarea>
       </div>
     `,
     footer: `
       <button class="btn btn-outline-secondary" id="hold-cancel">Batal</button>
-      <button class="btn btn-warning text-dark" id="hold-confirm">Hold WO</button>
+      <button class="btn btn-warning" id="hold-confirm">Hold WO</button>
     `,
     onMount: (overlay, close) => {
       overlay.querySelector('#hold-cancel').addEventListener('click', close);
       overlay.querySelector('#hold-confirm').addEventListener('click', async () => {
-        const notes = overlay.querySelector('#hold-notes').value.trim();
-        if (!notes) {
-          showToast('Alasan hold wajib diisi', 'warning');
-          return;
-        }
-
+        const reason = overlay.querySelector('#hold-reason').value.trim();
+        if (!reason) return showToast('Alasan hold harus diisi', 'warning');
+        
         try {
           await updateRow('work_orders', wo.id, {
             status: 'hold',
-            notes: `[HOLD] ${notes}`,
+            notes: (wo.notes ? wo.notes + '\\n\\n' : '') + `[HOLD] ${reason}`
           });
-          showToast('Work Order di-hold', 'success');
+          showToast('WO berhasil di-hold', 'success');
           close();
           await loadWOs();
         } catch (err) {
-          showToast('Gagal mengubah status WO', 'error');
+          showToast(err.message || 'Gagal', 'error');
+        }
+      });
+    }
+  });
+}
+
+function showPlotingForm(wo) {
+  showModal({
+    title: `Ploting Teknisi - ${wo.wo_number}`,
+    body: `
+      <div class="mb-3">
+        <p class="text-muted">Pilih teknisi untuk mengerjakan Preventive Maintenance ini.</p>
+        <label class="form-label">Teknisi Ditugaskan *</label>
+        <select class="form-select" id="plot-assigned">
+          <option value="">... Pilih Teknisi ...</option>
+          ${technicianList.map(t => `<option value="${t.id}">${t.full_name}</option>`).join('')}
+        </select>
+      </div>
+    `,
+    footer: `
+      <button class="btn btn-outline-secondary" data-bs-dismiss="modal" id="plot-cancel">Batal</button>
+      <button class="btn btn-primary" id="plot-save">Simpan & Ploting</button>
+    `,
+    onMount: (overlay, close) => {
+      overlay.querySelector('#plot-cancel').addEventListener('click', close);
+      overlay.querySelector('#plot-save').addEventListener('click', async () => {
+        const assigned = overlay.querySelector('#plot-assigned').value;
+        if (!assigned) {
+          showToast('Teknisi wajib dipilih', 'warning');
+          return;
+        }
+        try {
+          await updateRow('work_orders', wo.id, {
+            assigned_to: assigned,
+            status: 'diploting'
+          });
+          showToast('WO berhasil diploting ke teknisi', 'success');
+          close();
+          await loadWOs();
+        } catch (err) {
+          showToast('Gagal ploting WO', 'error');
         }
       });
     }

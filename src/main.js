@@ -16,6 +16,7 @@ import { renderUserController } from './pages/user-controller.js';
 import { renderPlan } from './pages/plan.js';
 import { renderAdminBroadcast } from './pages/admin-broadcast.js';
 import { renderProfile } from './pages/profile.js';
+import { renderMdsTemplates } from './pages/mds-templates.js';
 
 // Pages - Technician
 import { renderTechWoList } from './pages/tech-wo-list.js';
@@ -44,6 +45,7 @@ router
   .on('/admin-broadcast', renderAdminBroadcast)
   .on('/profile', renderProfile)
   .on('/approval', renderApproval)
+  .on('/mds-templates', renderMdsTemplates)
   // Technician routes
   .on('/tech-wo-list', renderTechWoList)
   .on('/tech-create-wo', renderTechCreateWo)

@@ -57,7 +57,7 @@ export function showModal({ title, body, footer, size = '', onMount }) {
 /**
  * Show a confirmation dialog
  */
-export function showConfirm({ title = 'Konfirmasi', message, confirmText = 'Hapus', cancelText = 'Batal', onConfirm }) {
+export function showConfirm({ title = 'Konfirmasi', message, confirmText = 'Hapus', cancelText = 'Batal', confirmClass = 'btn-danger', onConfirm }) {
   const close = showModal({
     title,
     body: `
@@ -71,7 +71,7 @@ export function showConfirm({ title = 'Konfirmasi', message, confirmText = 'Hapu
     `,
     footer: `
       <button class="btn btn-outline-secondary px-4" id="confirm-cancel">${cancelText}</button>
-      <button class="btn btn-danger px-4" id="confirm-ok">${confirmText}</button>
+      <button class="btn ${confirmClass} px-4" id="confirm-ok">${confirmText}</button>
     `,
     onMount: (overlay, closeFn) => {
       overlay.querySelector('#confirm-cancel').addEventListener('click', closeFn);
