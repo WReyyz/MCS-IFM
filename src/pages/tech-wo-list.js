@@ -162,12 +162,32 @@ function renderWOContent(content, preventive, corrective, today) {
   });
 }
 
-function showWODetail(wo) {
+// Fetch semua nama anggota tim dari wo_assignees
+async function fetchTeamNames(woId) {
+  try {
+    const { data } = await supabase
+      .from('wo_assignees')
+      .select('profiles!wo_assignees_technician_id_fkey(full_name)')
+      .eq('wo_id', woId);
+    if (data && data.length > 0) {
+      return data.map(r => r.profiles?.full_name).filter(Boolean);
+    }
+  } catch (_) {}
+  return [];
+}
+
+async function showWODetail(wo) {
   const statusInfo = WO_STATUS[wo.status] || {};
   const priorityInfo = WO_PRIORITY[wo.priority] || {};
   const cat = WO_CATEGORY[wo.category] || WO_CATEGORY.OTHER;
   const equipName = wo.equipment?.namaEquipment || wo.equipment_id || '-';
   const creatorName = wo.profiles?.full_name || 'Admin';
+
+  // Fetch semua anggota tim dari wo_assignees
+  const teamNames = await fetchTeamNames(wo.id);
+  const teamHtml = teamNames.length > 0
+    ? teamNames.map(n => `<span class="badge me-1" style="background:#dbeafe;color:#1e40af;font-weight:500;">${escapeHtml(n)}</span>`).join('')
+    : `<span class="text-muted small">${escapeHtml(wo.profiles?.full_name || '-')}</span>`;
 
   // WO PM: bisa isi MDS jika status diploting atau menunggu_approval (untuk revisi)
   const isPreventive = wo.type === 'preventive';
@@ -202,6 +222,12 @@ function showWODetail(wo) {
             <div class="bg-light border rounded p-3 h-100">
               <div class="small text-muted">Kategori</div>
               <div class="mt-1">${badge(cat.label, cat.color, cat.bg)}</div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="bg-light border rounded p-3">
+              <div class="small text-muted mb-1">Tim Teknisi</div>
+              <div class="mt-1">${teamHtml}</div>
             </div>
           </div>
           <div class="col-6">
@@ -257,22 +283,31 @@ function showWODetail(wo) {
 
       overlay.querySelector('#detail-close-wo')?.addEventListener('click', () => {
         close();
-        showCloseWOForm(wo);
+        showCloseWOForm(wo, teamNames);
       });
     }
   });
 }
 
-function showCloseWOForm(wo) {
+function showCloseWOForm(wo, teamNames = []) {
   const now = new Date();
   const pad = n => String(n).padStart(2, '0');
   const defaultDatetime = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+  // Tampilkan semua anggota tim yang akan tercatat
+  const teamHtml = teamNames.length > 0
+    ? `<div class="alert alert-info py-2 px-3 mb-3" style="border-radius:8px;font-size:0.83rem;">
+        👥 <strong>Tim:</strong> ${teamNames.map(n => escapeHtml(n)).join(', ')}
+        <br><span class="text-muted" style="font-size:.78rem;">Semua anggota tim akan tercatat sebagai pelaksana WO ini.</span>
+       </div>`
+    : '';
 
   showModal({
     title: `Selesaikan WO — ${wo.wo_number}`,
     size: 'modal-md',
     body: `
-      <p class="text-secondary small mb-4">
+      ${teamHtml}
+      <p class="text-secondary small mb-3">
         Pastikan pekerjaan sudah benar-benar selesai sebelum menutup WO ini.
       </p>
       <div class="row g-3 mb-3">
@@ -355,9 +390,11 @@ function showCloseWOForm(wo) {
           return;
         }
         try {
+          // closed_by: catat teknisi yang menekan tombol close
+          // assigned_to: TIDAK diubah, tetap mengacu teknisi utama (index 0 saat ploting)
           await updateRow('work_orders', wo.id, {
             status: 'closed',
-            assigned_to: currentProfile.id, // Set assignee to tech who closed it
+            closed_by: currentProfile.id,
             man_hours_actual: hours,
             started_at: new Date(startEl.value).toISOString(),
             closed_at: new Date(finishEl.value).toISOString(),
@@ -368,7 +405,7 @@ function showCloseWOForm(wo) {
           close();
           renderTechWoList();
         } catch (err) {
-          showToast('Gagal menutup WO', 'error');
+          showToast('Gagal menutup WO: ' + (err.message || ''), 'error');
         }
       });
     }

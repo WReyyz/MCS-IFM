@@ -15,6 +15,8 @@ let currentProfile = null;
 let activeChip     = 'generated'; // chip aktif
 let activeTab      = 'wo';        // 'wo' | 'jadwal'
 let searchQuery    = '';
+// Map: wo_id -> array of technician full_name (dari tabel wo_assignees)
+let woAssigneesMap = {};          // { 'wo-uuid': ['Nama A', 'Nama B'] }
 
 // ─── Entry point ─────────────────────────────────────────────────────────────
 export async function renderPreventiveMaintenance() {
@@ -575,6 +577,22 @@ async function loadData() {
       }),
     ]);
 
+    // Load semua wo_assignees sekaligus, build map: wo_id -> [name, ...]
+    woAssigneesMap = {};
+    try {
+      const woIds = allWOs.map(w => w.id);
+      if (woIds.length > 0) {
+        const { data: assigneeRows } = await supabase
+          .from('wo_assignees')
+          .select('wo_id, profiles!wo_assignees_technician_id_fkey(full_name)')
+          .in('wo_id', woIds);
+        (assigneeRows || []).forEach(row => {
+          if (!woAssigneesMap[row.wo_id]) woAssigneesMap[row.wo_id] = [];
+          if (row.profiles?.full_name) woAssigneesMap[row.wo_id].push(row.profiles.full_name);
+        });
+      }
+    } catch (_) { /* RLS belum aktif? abaikan dulu */ }
+
     populateFilterSelects();
     populateFormSelects();
     updateChipCounts();
@@ -804,12 +822,18 @@ function renderWoRow(wo, isAdmin) {
   const interval = intervalLabel(pmSched?.interval_days);
   const nextPlan = formatDate(wo.next_due || pmSched?.next_due);
 
-  let techHtml = `<span class="tech-none">Belum ditugaskan</span>`;
-  if (wo.assignee?.full_name) {
+  // Tampilkan semua nama tim dari wo_assignees, fallback ke assignee.full_name
+  const teamNames = woAssigneesMap[wo.id];
+  let techHtml;
+  if (teamNames && teamNames.length > 0) {
+    techHtml = teamNames.map(n => escapeHtml(n)).join(', ');
+  } else if (wo.assignee?.full_name) {
     techHtml = escapeHtml(wo.assignee.full_name);
   } else if (wo.assigned_to) {
     const t = technicianList.find(x => x.id === wo.assigned_to);
-    if (t) techHtml = escapeHtml(t.full_name);
+    techHtml = t ? escapeHtml(t.full_name) : `<span class="tech-none">Belum ditugaskan</span>`;
+  } else {
+    techHtml = `<span class="tech-none">Belum ditugaskan</span>`;
   }
 
   const inspectorHtml = wo.inspector?.full_name
@@ -1590,11 +1614,31 @@ async function handleGenerateWO() {
 
 // ─── Modal Ploting ────────────────────────────────────────────────────────────
 
-function showPlotingModal(wo, isReassign) {
+async function showPlotingModal(wo, isReassign) {
   const eqName     = wo.equipment?.namaEquipment || wo.equipment_id || '-';
   const pmSched    = allPMs.find(p => p.equipment_id === wo.equipment_id);
   const interval   = intervalLabel(pmSched?.interval_days);
-  let selectedIds  = wo.assigned_to ? [wo.assigned_to] : [];
+
+  // Saat Reassign: load semua teknisi yang sudah di-assign dari wo_assignees
+  let selectedIds = [];
+  if (isReassign) {
+    try {
+      const { data: rows } = await supabase
+        .from('wo_assignees')
+        .select('technician_id')
+        .eq('wo_id', wo.id);
+      if (rows && rows.length > 0) {
+        selectedIds = rows.map(r => r.technician_id);
+      } else {
+        // fallback ke assigned_to jika tabel kosong
+        if (wo.assigned_to) selectedIds = [wo.assigned_to];
+      }
+    } catch (_) {
+      if (wo.assigned_to) selectedIds = [wo.assigned_to];
+    }
+  } else {
+    selectedIds = wo.assigned_to ? [wo.assigned_to] : [];
+  }
 
   const techHtml = technicianList.length === 0
     ? `<p style="text-align:center;color:var(--text-secondary);padding:20px 0;">Belum ada teknisi</p>`
@@ -1668,16 +1712,23 @@ function showPlotingModal(wo, isReassign) {
           await updateRow('work_orders', wo.id, {
             status: 'diploting', assigned_to: selectedIds[0],
           });
-          try {
-            await supabase.from('wo_assignees').delete().eq('wo_id', wo.id);
-            await supabase.from('wo_assignees').insert(
+
+          // Hapus assignee lama lalu insert semua yang dipilih
+          const { error: delErr } = await supabase
+            .from('wo_assignees').delete().eq('wo_id', wo.id);
+          if (delErr) throw delErr;
+
+          const { error: insErr } = await supabase
+            .from('wo_assignees')
+            .insert(
               selectedIds.map(tid => ({
                 wo_id: wo.id, technician_id: tid,
                 assigned_at: new Date().toISOString(),
                 assigned_by: currentProfile?.id || null,
               }))
             );
-          } catch (_) {}
+          if (insErr) throw insErr;
+
           showToast(isReassign ? 'Teknisi diupdate!' : 'WO berhasil diploting!', 'success');
           close(); await loadData();
         } catch (err) {
@@ -1689,3 +1740,4 @@ function showPlotingModal(wo, isReassign) {
     }
   });
 }
+
