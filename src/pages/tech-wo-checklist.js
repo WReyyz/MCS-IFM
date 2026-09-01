@@ -1,4 +1,4 @@
-﻿import { renderTechShell } from '../components/tech-shell.js';
+import { renderTechShell } from '../components/tech-shell.js';
 import { icons } from '../components/icons.js';
 import { showToast } from '../components/toast.js';
 import { updateRow, supabase } from '../lib/supabase.js';
@@ -47,7 +47,20 @@ export async function renderTechWoChecklist() {
         .eq('wo_id', woId);
       if (rows && rows.length > 0) teamNames = rows.map(r => r.profiles?.full_name).filter(Boolean);
     } catch (_) {}
-    if (teamNames.length === 0 && profile.full_name) teamNames = [profile.full_name];
+    // Jika wo_assignees kosong (RLS belum aktif / belum ada data), fallback ke assigned_to
+    if (teamNames.length === 0) {
+      // Coba ambil dari assigned_to di work_orders sebagai fallback
+      const techId = wo.assigned_to;
+      if (techId) {
+        try {
+          const { data: tp } = await supabase
+            .from('profiles').select('full_name').eq('id', techId).single();
+          if (tp?.full_name) teamNames.push(tp.full_name);
+        } catch (_) {}
+      }
+      // Selalu sertakan user yang sedang login jika belum ada dalam daftar
+      if (!teamNames.includes(profile.full_name)) teamNames.push(profile.full_name);
+    }
 
     const groupedTasks = {};
     checklist.forEach(item => {
@@ -216,7 +229,7 @@ function renderChecklistUI(content, wo, groupedTasks, profile, teamNames) {
       </div>
       <div class="col-6">
         <label class="form-label small fw-bold text-secondary">Diisi oleh</label>
-        <input type="text" class="form-control bg-light" value="${escapeHtml(profile.full_name)}" readonly />
+        <input type="text" class="form-control bg-light" value="${escapeHtml(teamNames.join(', '))}" readonly />
       </div>
     </div>
   </div>
