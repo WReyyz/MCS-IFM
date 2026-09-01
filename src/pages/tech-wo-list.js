@@ -17,21 +17,46 @@ export async function renderTechWoList() {
   try {
     const today = new Date().toISOString().split('T')[0];
 
-    // Fetch WOs assigned to this tech, OR unassigned corrective WOs
-    const { data: allWOsData, error } = await supabase
+    // 1) WO langsung assigned_to teknisi ini, atau corrective unassigned
+    const { data: directWOs, error: e1 } = await supabase
       .from('work_orders')
       .select('*, equipment(namaEquipment, idAset), profiles:requested_by(full_name)')
       .or(`assigned_to.eq.${currentProfile.id},and(assigned_to.is.null,type.eq.corrective)`)
       .order('opened_at', { ascending: true });
+    if (e1) throw e1;
 
-    if (error) throw error;
-    const allWOs = allWOsData || [];
+    // 2) WO yang di-assign via tabel wo_assignees (multi-teknisi)
+    const { data: assigneeRows, error: e2 } = await supabase
+      .from('wo_assignees')
+      .select('wo_id')
+      .eq('technician_id', currentProfile.id);
+    if (e2) throw e2;
 
-    // WO Preventive scheduled for today
+    let extraWOs = [];
+    if (assigneeRows && assigneeRows.length > 0) {
+      const extraIds = assigneeRows.map(r => r.wo_id);
+      const { data: extraData, error: e3 } = await supabase
+        .from('work_orders')
+        .select('*, equipment(namaEquipment, idAset), profiles:requested_by(full_name)')
+        .in('id', extraIds)
+        .order('opened_at', { ascending: true });
+      if (e3) throw e3;
+      extraWOs = extraData || [];
+    }
+
+    // Gabungkan dan deduplicate by id
+    const seen = new Set();
+    const allWOs = [...(directWOs || []), ...extraWOs].filter(wo => {
+      if (seen.has(wo.id)) return false;
+      seen.add(wo.id);
+      return true;
+    });
+
+    // WO Preventive aktif yang di-assign ke teknisi ini
+    // Tampilkan semua status aktif (diploting, revisi, menunggu_approval), bukan hanya hari ini
     const preventiveToday = allWOs.filter(wo =>
       wo.type === 'preventive' &&
-      wo.status !== 'closed' &&
-      wo.opened_at?.startsWith(today)
+      ['diploting', 'revisi', 'menunggu_approval'].includes(wo.status)
     );
 
     // WO Corrective active (open / hold)
@@ -97,14 +122,14 @@ function renderWOContent(content, preventive, corrective, today) {
 
       <!-- PREVENTIVE WOs -->
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h6 class="fw-bold m-0 text-secondary" style="letter-spacing: 0.5px; font-size: 0.85rem;">WO PREVENTIVE HARI INI</h6>
+        <h6 class="fw-bold m-0 text-secondary" style="letter-spacing: 0.5px; font-size: 0.85rem;">WO PREVENTIVE AKTIF</h6>
         <span class="badge bg-success rounded-pill px-2 py-1">${preventive.length}</span>
       </div>
       <div id="preventive-list" class="mb-4">
         ${preventive.length === 0
           ? `<div class="bg-white rounded p-4 text-center shadow-sm text-muted border">
               <div class="mb-3 text-success" style="font-size: 2.5rem; opacity: 0.7;">${icons.calendarCheck}</div>
-              <p class="m-0 fw-medium">Tidak ada WO Preventive terjadwal hari ini</p>
+              <p class="m-0 fw-medium">Tidak ada WO Preventive aktif saat ini</p>
              </div>`
           : preventive.map(wo => renderWOCard(wo)).join('')
         }
