@@ -227,7 +227,7 @@ export async function renderDashboard() {
           <div class="card h-100 border-0 shadow-sm" style="border-radius: 12px;">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-semibold mb-0 text-dark" style="font-size: 0.9rem;">Daftar Material Menyentuh Stok Minimum</h6>
+                <h6 class="fw-semibold mb-0 text-dark" style="font-size: 0.9rem;">Material Min. Stock</h6>
                 <a href="#/material-stock" class="btn btn-sm btn-light border rounded-pill" style="font-size: 0.75rem;">Lihat Semua</a>
               </div>
               <div class="table-responsive">

@@ -101,6 +101,9 @@ function renderChecklistUI(content, wo, groupedTasks, profile, teamNames) {
         <div class="me-3" style="flex:1;">
           <div class="text-secondary small mb-1">${letter}. ${escapeHtml(task.task)}</div>
           <input type="hidden" class="cl-item-id" value="${task.id || ''}">
+          ${task.type === 'measurement' ? `<div class="d-flex align-items-center gap-2 mt-1">
+            <input type="number" step="any" class="form-control form-control-sm cl-measurement-val" style="width:90px;" placeholder="Nilai" />
+            <span class="text-muted small">${escapeHtml(task.unit || '')}</span></div>` : ''}
           ${task.type === 'number' ? `<div class="d-flex align-items-center gap-2">
             <input type="number" class="form-control form-control-sm cl-number-val" style="width:80px;" placeholder="Nilai" />
             <span class="text-muted small">${escapeHtml(task.standard || '')}</span></div>` : ''}
@@ -321,15 +324,33 @@ function renderChecklistUI(content, wo, groupedTasks, profile, teamNames) {
     let allFilled = true;
     rows.forEach(row => {
       const taskName = row.dataset.task; const type = row.dataset.type; const result = row.dataset.result;
-      let val = null;
-      if (type === 'number') { const ni = row.querySelector('.cl-number-val'); val = ni ? ni.value.trim() : ''; if (!val) allFilled = false; }
-      else if (type === 'image') { val = row.dataset.imgBase64; if (!val) allFilled = false; }
+      let measurementVal = null;
+      let imgVal = null;
+      if (type === 'measurement') {
+        const mi = row.querySelector('.cl-measurement-val');
+        measurementVal = mi ? mi.value.trim() : '';
+        // measurement boleh kosong (tidak wajib diisi jika tidak ada nilai)
+      } else if (type === 'number') {
+        const ni = row.querySelector('.cl-number-val');
+        measurementVal = ni ? ni.value.trim() : '';
+      } else if (type === 'image') {
+        imgVal = row.dataset.imgBase64;
+        if (!imgVal) allFilled = false;
+      }
       if (!result) allFilled = false;
       const itemId = row.querySelector('.cl-item-id')?.value || null;
-      results.push({ item_id: itemId, task: taskName, type, result, value: val,
-        category: row.closest('.mb-4').querySelector('h6').textContent });
+      const resultText = result === 'pass' ? 'Pass' : result === 'fail' ? 'Failed' : '';
+      results.push({
+        template_item_id: itemId,
+        task: taskName,
+        type,
+        result: resultText,
+        measurementVal,
+        imgVal,
+        category: row.closest('.mb-4').querySelector('h6').textContent
+      });
     });
-    if (!allFilled) { showToast('Harap lengkapi semua task (PASS/FAIL) dan isian yang wajib.', 'warning'); return; }
+    if (!allFilled) { showToast('Harap lengkapi semua task (PASS/FAIL).', 'warning'); return; }
 
     const notes = content.querySelector('#cl-notes').value.trim();
     const btn = content.querySelector('#btn-submit-cl');
@@ -338,8 +359,14 @@ function renderChecklistUI(content, wo, groupedTasks, profile, teamNames) {
 
     try {
       if (wo.type === 'preventive') {
-        const dbR = results.map(r => ({ wo_id: wo.id, item_id: r.item_id, task_name: r.task, category: r.category,
-          task_type: r.type, result: r.value || r.result, evidence_url: r.type === 'image' ? r.value : null }));
+        const dbR = results.map(r => ({
+          wo_id: wo.id,
+          template_item_id: r.template_item_id || null,
+          result: r.result || null,
+          measurement_value: (r.measurementVal !== '' && r.measurementVal !== null) ? parseFloat(r.measurementVal) : null,
+          photo_url: r.imgVal || null,
+          notes: '',
+        }));
         const { error: insErr } = await supabase.from('wo_checklist_results').insert(dbR);
         if (insErr) console.warn('wo_checklist_results error:', insErr);
       }

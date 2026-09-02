@@ -9,7 +9,6 @@ import { formatDate, debounce, escapeHtml, badge, setupBulkSelection } from '../
 let technicianList = []; // cached for requirement PIC dropdown
 
 let allEquipment = [];
-let selectedEquipmentIds = [];
 let requirementCountsMap = {}; // { equipmentId: count }
 
 export async function renderEquipment() {
@@ -43,19 +42,6 @@ export async function renderEquipment() {
         <div class="page-loading"><div class="spinner"></div></div>
       </div>
 
-      <!-- BULK ACTION BAR -->
-      <div class="bulk-action-bar" id="bulk-action-bar">
-        <div class="bulk-selected-count">
-          <span class="badge bg-warning text-dark" id="bulk-count-badge">0</span> item terpilih
-        </div>
-        <div class="bulk-actions">
-          <select class="form-select form-select-sm" id="bulk-status-select" style="min-width:150px">
-            <option value="">Ubah Kondisi...</option>
-            ${Object.entries(EQUIPMENT_STATUS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}
-          </select>
-          <button class="btn btn-primary btn-sm" id="btn-bulk-update">Update</button>
-        </div>
-      </div>
     </div>
   `;
 
@@ -64,44 +50,10 @@ export async function renderEquipment() {
   document.getElementById('equip-search').addEventListener('input', debounce(filterAndRender));
   document.getElementById('filter-status').addEventListener('change', filterAndRender);
   document.getElementById('filter-category').addEventListener('change', filterAndRender);
-  
-  document.getElementById('btn-bulk-update').addEventListener('click', handleBulkUpdate);
 
   await loadEquipment();
 }
 
-async function handleBulkUpdate() {
-  const newStatus = document.getElementById('bulk-status-select').value;
-  if (!newStatus) return showToast('Pilih kondisi terlebih dahulu', 'warning');
-  if (selectedEquipmentIds.length === 0) return;
-
-  showConfirm({
-    message: `Ubah kondisi ${selectedEquipmentIds.length} equipment menjadi ${EQUIPMENT_STATUS[newStatus].label}?`,
-    onConfirm: async () => {
-      try {
-        await bulkUpdateRows('equipment', selectedEquipmentIds, { kondisi: newStatus }, 'idAset');
-        showToast('Berhasil update kondisi massal', 'success');
-        document.getElementById('bulk-status-select').value = '';
-        selectedEquipmentIds = [];
-        updateBulkBar();
-        await loadEquipment();
-      } catch (err) {
-        showToast('Gagal update massal', 'error');
-      }
-    }
-  });
-}
-
-function updateBulkBar() {
-  const bar = document.getElementById('bulk-action-bar');
-  const badge = document.getElementById('bulk-count-badge');
-  if (selectedEquipmentIds.length > 0) {
-    badge.textContent = selectedEquipmentIds.length;
-    bar.classList.add('show');
-  } else {
-    bar.classList.remove('show');
-  }
-}
 
 async function loadEquipment() {
   try {
@@ -143,7 +95,6 @@ function renderTable(data) {
 
   if (data.length === 0) {
     wrapper.innerHTML = `<div class="empty-state">${icons.hardDrive}<h4>Tidak ada equipment</h4><p>Tambahkan equipment baru untuk memulai</p></div>`;
-    updateBulkBar();
     return;
   }
 
@@ -152,7 +103,6 @@ function renderTable(data) {
       <table class="table table-hover table-bordered mb-0">
         <thead>
           <tr>
-            <th class="col-checkbox"><input type="checkbox" class="form-check-input" id="select-all" /></th>
             <th>ID SISTEM</th><th>NAMA EQUIPMENT</th><th>AREA</th><th>KATEGORI</th><th>NO INVENTORY</th><th>MANUFACTURE/VENDOR</th><th>TYPE</th><th>REQUIREMENTS</th><th>QR CODE</th><th>AKSI</th>
           </tr>
         </thead>
@@ -161,7 +111,6 @@ function renderTable(data) {
             const reqCount = requirementCountsMap[e.idAset] || 0;
             return `
             <tr>
-              <td class="col-checkbox"><input type="checkbox" class="form-check-input row-checkbox" value="${e.idAset}" ${selectedEquipmentIds.includes(e.idAset) ? 'checked' : ''} /></td>
               <td><span class="equipment-code">${escapeHtml(e.idAset)}</span></td>
               <td class="fw-semibold">${escapeHtml(e.namaEquipment)}</td>
               <td>${escapeHtml(e.area || '-')}</td>
@@ -179,7 +128,6 @@ function renderTable(data) {
               </td>
               <td>
                 <div class="table-actions">
-                  <button class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" data-history="${e.idAset}" title="History">${icons.clock} HISTORY</button>
                   <button class="btn btn-outline-warning btn-sm btn-icon" data-edit="${e.idAset}" title="Edit">${icons.edit}</button>
                   <button class="btn btn-outline-danger btn-sm btn-icon" data-delete="${e.idAset}" title="Hapus">${icons.trash}</button>
                 </div>
@@ -192,12 +140,6 @@ function renderTable(data) {
   `;
 
 
-  // Setup bulk selection helper
-  setupBulkSelection(wrapper, (selected) => {
-    selectedEquipmentIds = selected;
-    updateBulkBar();
-  });
-
   wrapper.querySelectorAll('[data-edit]').forEach(btn => {
     btn.addEventListener('click', () => {
       const equip = allEquipment.find(e => e.idAset === btn.dataset.edit);
@@ -209,9 +151,6 @@ function renderTable(data) {
     btn.addEventListener('click', () => showQRCode(btn.dataset.qr));
   });
 
-  wrapper.querySelectorAll('[data-history]').forEach(btn => {
-    btn.addEventListener('click', () => showHistory(btn.dataset.history));
-  });
 
   wrapper.querySelectorAll('[data-delete]').forEach(btn => {
     btn.addEventListener('click', () => {

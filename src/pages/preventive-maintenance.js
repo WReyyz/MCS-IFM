@@ -1004,46 +1004,48 @@ async function printWoPdf(wo) {
             </td>
             <td class="cell-center">${isPass ? '✓' : ''}</td>
             <td class="cell-center">${isFail ? '✗' : ''}</td>
-            <td class="cell-sign"></td>
           </tr>`;
       });
     }
 
-    // Generate sign boxes html
+    // Generate sign boxes html (QR Code)
+    const woNum = wo.wo_number || '-';
     let signBoxesHtml = '';
     techProfiles.forEach(tp => {
       const tName = tp?.full_name || '-';
       const tEmp  = tp?.employee_id || '-';
+      const qrData = `TEKNISI\nNama: ${tName}\nNoPeg: ${tEmp}`;
       signBoxesHtml += `
           <div class="sign-box">
             <div class="sign-label">Teknisi</div>
             <div class="barcode-area">
-              <div data-barcode="${escapeHtml(tEmp)}"></div>
+              <div data-qrcode="${escapeHtml(qrData)}" style="display:flex;justify-content:center;"></div>
               <div class="sign-name">${escapeHtml(tName)}</div>
               <div class="sign-empid">NoPeg: ${escapeHtml(tEmp)}</div>
             </div>
           </div>
       `;
     });
-    // Fallback jika tidak ada teknisi (meski tidak mungkin)
+    // Fallback jika tidak ada teknisi
     if (techProfiles.length === 0) {
       signBoxesHtml += `
           <div class="sign-box">
             <div class="sign-label">Teknisi</div>
             <div class="barcode-area">
-              <div data-barcode="-"></div>
+              <div data-qrcode="-"></div>
               <div class="sign-name">-</div>
               <div class="sign-empid">NoPeg: -</div>
             </div>
           </div>
       `;
     }
-    
+
+    const inspQrData = `INSPECTOR\nNama: ${inspName}\nNoPeg: ${inspEmpId}`;
     signBoxesHtml += `
           <div class="sign-box">
             <div class="sign-label">Inspector / Approver</div>
             <div class="barcode-area">
-              <div data-barcode="${escapeHtml(inspEmpId)}"></div>
+              <div data-qrcode="${escapeHtml(inspQrData)}" style="display:flex;justify-content:center;"></div>
               <div class="sign-name">${escapeHtml(inspName)}</div>
               <div class="sign-empid">NoPeg: ${escapeHtml(inspEmpId)}</div>
             </div>
@@ -1112,77 +1114,36 @@ async function printWoPdf(wo) {
           }
           .sign-box:last-child { border-right: none; }
           .sign-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #374151; margin-bottom: 6px; }
-          .barcode-area { min-height: 70px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 3px; }
-          .barcode-svg { margin-bottom: 4px; }
-          .sign-name { font-weight: 700; font-size: 11px; margin-top: 2px; }
+          .barcode-area { min-height: 90px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 4px; padding: 4px 0; }
+          .sign-name { font-weight: 700; font-size: 11px; margin-top: 4px; }
           .sign-empid { font-size: 9px; color: #6b7280; }
 
           @media print {
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           }
         </style>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
         <script>
-          // Simple Code128-B barcode generator (lightweight, no external lib)
-          function generateBarcode128(text) {
-            const CODE128B = [
-              [2,1,2,2,2,2],[2,2,2,1,2,2],[2,2,2,2,2,1],[1,2,1,2,2,3],[1,2,1,3,2,2],
-              [1,3,1,2,2,2],[1,2,2,2,1,3],[1,2,2,3,1,2],[1,3,2,2,1,2],[2,2,1,2,1,3],
-              [2,2,1,3,1,2],[2,3,1,2,1,2],[1,1,2,2,3,2],[1,2,2,1,3,2],[1,2,2,2,3,1],
-              [1,1,3,2,2,2],[1,2,3,1,2,2],[1,2,3,2,2,1],[2,2,3,2,1,1],[2,2,1,1,3,2],
-              [2,2,1,2,3,1],[2,1,3,2,1,2],[2,2,3,1,1,2],[3,1,2,1,3,1],[3,1,1,2,2,2],
-              [3,2,1,1,2,2],[3,2,1,2,2,1],[3,1,2,2,1,2],[3,2,2,1,1,2],[3,2,2,2,1,1],
-              [2,1,2,1,2,3],[2,1,2,3,2,1],[2,3,2,1,2,1],[1,1,1,3,2,3],[1,3,1,1,2,3],
-              [1,3,1,3,2,1],[1,1,2,3,1,3],[1,3,2,1,1,3],[1,3,2,3,1,1],[2,1,1,3,1,3],
-              [2,3,1,1,1,3],[2,3,1,3,1,1],[1,1,2,1,3,3],[1,1,2,3,3,1],[1,3,2,1,3,1],
-              [1,1,3,1,2,3],[1,1,3,3,2,1],[1,3,3,1,2,1],[3,1,3,1,2,1],[2,1,1,3,3,1],
-              [2,3,1,1,3,1],[2,1,3,1,1,3],[2,1,3,3,1,1],[2,1,3,1,3,1],[3,1,1,1,2,3],
-              [3,1,1,3,2,1],[3,3,1,1,2,1],[3,1,2,1,1,3],[3,1,2,3,1,1],[3,3,2,1,1,1],
-              [3,1,4,1,1,1],[2,2,1,4,1,1],[4,3,1,1,1,1],[1,1,1,2,2,4],[1,1,1,4,2,2],
-              [1,2,1,1,2,4],[1,2,1,4,2,1],[1,4,1,1,2,2],[1,4,1,2,2,1],[1,1,2,2,1,4],
-              [1,1,2,4,1,2],[1,2,2,1,1,4],[1,2,2,4,1,1],[1,4,2,1,1,2],[1,4,2,2,1,1],
-              [2,4,1,2,1,1],[2,2,1,1,1,4],[4,1,3,1,1,1],[2,4,1,1,1,2],[1,3,4,1,1,1],
-              [1,1,1,2,4,2],[1,2,1,1,4,2],[1,2,1,2,4,1],[1,1,4,2,1,2],[1,2,4,1,1,2],
-              [1,2,4,2,1,1],[4,1,1,2,1,2],[4,2,1,1,1,2],[4,2,1,2,1,1],[2,1,2,1,4,1],
-              [2,1,4,1,2,1],[4,1,2,1,2,1],[1,1,1,1,4,3],[1,1,1,3,4,1],[1,3,1,1,4,1],
-              [1,1,4,1,1,3],[1,1,4,3,1,1],[4,1,1,1,1,3],[4,1,1,3,1,1],[1,1,3,1,4,1],
-              [1,1,4,1,3,1],[3,1,1,1,4,1],[4,1,1,1,3,1],[2,1,1,4,1,2],[2,1,1,2,1,4],
-              [2,1,1,2,3,2],[2,3,3,1,1,1,2]
-            ];
-            const START_B = 104;
-            const STOP = 106;
-            let sum = START_B;
-            const codes = [CODE128B[START_B]];
-            for (let i = 0; i < text.length; i++) {
-              const idx = text.charCodeAt(i) - 32;
-              if (idx >= 0 && idx < 95) {
-                codes.push(CODE128B[idx]);
-                sum += idx * (i + 1);
-              }
-            }
-            codes.push(CODE128B[sum % 103]);
-            codes.push(CODE128B[STOP]);
-            // Build SVG
-            let x = 0;
-            const barWidth = 1.2;
-            const height = 30;
-            let bars = '';
-            codes.forEach(pattern => {
-              for (let i = 0; i < pattern.length; i++) {
-                const w = pattern[i] * barWidth;
-                if (i % 2 === 0) {
-                  bars += '<rect x="' + x + '" y="0" width="' + w + '" height="' + height + '" fill="#000"/>';
-                }
-                x += w;
-              }
-            });
-            return '<svg class="barcode-svg" width="' + x + '" height="' + height + '" viewBox="0 0 ' + x + ' ' + height + '" xmlns="http://www.w3.org/2000/svg">' + bars + '</svg>';
-          }
-          // Render barcodes on load
+          // QR Code dynamic generator - render on load
           window.addEventListener('load', () => {
-            document.querySelectorAll('[data-barcode]').forEach(el => {
-              const text = el.getAttribute('data-barcode');
+            document.querySelectorAll('[data-qrcode]').forEach(el => {
+              const text = el.getAttribute('data-qrcode');
               if (text && text !== '-') {
-                el.innerHTML = generateBarcode128(text);
+                el.innerHTML = '';
+                try {
+                  new QRCode(el, {
+                    text: text,
+                    width: 72,
+                    height: 72,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.M
+                  });
+                } catch(e) {
+                  el.innerHTML = '<div style="font-size:9px;color:#999;">QR Error</div>';
+                }
+              } else {
+                el.innerHTML = '<div style="width:72px;height:72px;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:9px;color:#ccc;">-</div>';
               }
             });
           });
@@ -1234,7 +1195,6 @@ async function printWoPdf(wo) {
               <th rowspan="2" style="width:40px;">NO</th>
               <th rowspan="2">Activity</th>
               <th colspan="2">RESULT</th>
-              <th rowspan="2" style="width:110px;">SIGN/STAMP<br><small>TECH. &nbsp;&nbsp; INSP.</small></th>
             </tr>
             <tr>
               <th style="width:50px;">PASS</th>
@@ -1243,7 +1203,7 @@ async function printWoPdf(wo) {
           </thead>
           <tbody>
             ${activityRowsHtml}
-            ${templateItems.length === 0 ? '<tr><td colspan="5" style="text-align:center;padding:20px;color:#999;">Tidak ada data checklist</td></tr>' : ''}
+            ${templateItems.length === 0 ? '<tr><td colspan="4" style="text-align:center;padding:20px;color:#999;">Tidak ada data checklist</td></tr>' : ''}
           </tbody>
         </table>
 
@@ -1254,22 +1214,7 @@ async function printWoPdf(wo) {
 
         <!-- ══ DIGITAL SIGNATURE ══ -->
         <div class="sign-area">
-          <div class="sign-box">
-            <div class="sign-label">Teknisi</div>
-            <div class="barcode-area">
-              <div data-barcode="${escapeHtml(techEmpId)}"></div>
-              <div class="sign-name">${escapeHtml(techName)}</div>
-              <div class="sign-empid">NoPeg: ${escapeHtml(techEmpId)}</div>
-            </div>
-          </div>
-          <div class="sign-box">
-            <div class="sign-label">Inspector / Approver</div>
-            <div class="barcode-area">
-              <div data-barcode="${escapeHtml(inspEmpId)}"></div>
-              <div class="sign-name">${escapeHtml(inspName)}</div>
-              <div class="sign-empid">NoPeg: ${escapeHtml(inspEmpId)}</div>
-            </div>
-          </div>
+          ${signBoxesHtml}
           <div class="sign-box">
             <div class="sign-label">Kepala Pemeliharaan</div>
             <div class="barcode-area">
