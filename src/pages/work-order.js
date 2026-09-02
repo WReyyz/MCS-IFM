@@ -23,30 +23,25 @@ export async function renderWorkOrder() {
   currentProfile = await getCurrentProfile();
   const isAdmin = currentProfile?.role === 'admin';
 
-  const content = renderAppShell('Work Order');
+  const content = renderAppShell('Corective');
 
   content.innerHTML = `
     <div class="animate-fade-in">
       <div class="page-header">
-        <h2>Work Order</h2>
+        <h2>Corective</h2>
         <div class="page-header-actions">
           ${isAdmin ? `
             <button class="btn btn-outline-success d-flex align-items-center gap-2" id="export-excel-btn">${icons.download} <span>Export Excel</span></button>
-            <button class="btn btn-primary d-flex align-items-center gap-2" id="add-wo-btn">${icons.plus} <span>Buat Work Order</span></button>
+            <button class="btn btn-primary d-flex align-items-center gap-2" id="add-wo-btn">${icons.plus} <span>Buat Corective</span></button>
           ` : ''}
         </div>
       </div>
       <div class="toolbar">
         <div class="search-box">
           ${icons.search}
-          <input type="text" class="form-control form-control-sm" id="wo-search" placeholder="Cari WO..." />
+          <input type="text" class="form-control form-control-sm" id="wo-search" placeholder="Cari Corective..." />
         </div>
         <div class="filter-group">
-          <select class="form-select form-select-sm" id="filter-wo-type" style="min-width:140px">
-            <option value="">Semua Tipe</option>
-            <option value="corrective">Corrective</option>
-            <option value="preventive">Preventive (PM)</option>
-          </select>
           <select class="form-select form-select-sm" id="filter-wo-status" style="min-width:140px">
             <option value="">Semua Status</option>
             <option value="generated">Generated (Menunggu Ploting)</option>
@@ -97,7 +92,6 @@ export async function renderWorkOrder() {
   }
 
   document.getElementById('wo-search').addEventListener('input', debounce(filterAndRender));
-  document.getElementById('filter-wo-type').addEventListener('change', filterAndRender);
   document.getElementById('filter-wo-status').addEventListener('change', filterAndRender);
   document.getElementById('filter-wo-priority').addEventListener('change', filterAndRender);
   document.getElementById('filter-wo-category').addEventListener('change', filterAndRender);
@@ -167,6 +161,7 @@ async function loadWOs() {
     // Build fetch options
     const woOptions = {
       select: '*, assignee:profiles!assigned_to(full_name), creator:profiles!requested_by(full_name), wo_assignees(profiles!wo_assignees_technician_id_fkey(full_name))',
+      filters: [{ column: 'type', value: 'corrective' }],
       order: { column: 'created_at', ascending: false }
     };
 
@@ -187,14 +182,12 @@ async function loadWOs() {
 
 function filterAndRender() {
   const search = (document.getElementById('wo-search')?.value || '').toLowerCase();
-  const type = document.getElementById('filter-wo-type')?.value || '';
   const status = document.getElementById('filter-wo-status')?.value || '';
   const priority = document.getElementById('filter-wo-priority')?.value || '';
   const category = document.getElementById('filter-wo-category')?.value || '';
 
   let filtered = allWOs.filter(wo => {
     if (search && !`${wo.wo_number} ${wo.description} ${wo.category || ''}`.toLowerCase().includes(search)) return false;
-    if (type && wo.type !== type) return false;
     if (status && wo.status !== status) return false;
     if (priority && wo.priority !== priority) return false;
     if (category && wo.category !== category) return false;
@@ -210,7 +203,7 @@ function renderTable(data) {
   const isAdmin = currentProfile?.role === 'admin';
 
   if (data.length === 0) {
-    wrapper.innerHTML = `<div class="empty-state">${icons.clipboardList}<h4>Tidak ada work order</h4><p>${isAdmin ? 'Buat work order baru untuk memulai' : 'Belum ada work order yang ditugaskan kepada Anda'}</p></div>`;
+    wrapper.innerHTML = `<div class="empty-state">${icons.clipboardList}<h4>Tidak ada corective</h4><p>${isAdmin ? 'Buat corective baru untuk memulai' : 'Belum ada corective yang ditugaskan kepada Anda'}</p></div>`;
     updateBulkBar();
     return;
   }
@@ -355,7 +348,7 @@ function renderTable(data) {
 function showWOForm(existing = null) {
   const isEdit = !!existing;
   showModal({
-    title: isEdit ? 'Edit Work Order' : 'Buat Work Order Baru',
+    title: isEdit ? 'Edit Corective' : 'Buat Corective Baru',
     size: isEdit ? 'modal-lg' : 'modal-md',
     body: !isEdit ? `
       <div class="mb-3">
@@ -452,7 +445,7 @@ function showWOForm(existing = null) {
     `,
     footer: `
       <button class="btn btn-outline-secondary" id="wo-cancel">Batal</button>
-      <button class="btn btn-primary" id="wo-save">${isEdit ? 'Simpan Perubahan' : 'Buat WO'}</button>
+      <button class="btn btn-primary" id="wo-save">${isEdit ? 'Simpan Perubahan' : 'Buat Corective'}</button>
     `,
     onMount: (overlay, close) => {
       let photoBase64 = null;

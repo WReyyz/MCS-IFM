@@ -10,7 +10,7 @@ const ALL_MENU_ITEMS = [
   { path: '/preventive-maintenance', label: 'Preventive Maintenance', icon: 'calendarCheck', roles: ['admin', 'inspector'] },
   { path: '/mds-templates', label: 'Master Template MDS', icon: 'clipboardCheck', roles: ['admin'] },
   { path: '/approval', label: 'Inspection', icon: 'shieldCheck', roles: ['admin', 'inspector'] },
-  { path: '/work-order', label: 'Work Order', icon: 'clipboardList', roles: ['admin', 'inspector'] },
+  { path: '/work-order', label: 'Corective', icon: 'clipboardList', roles: ['admin', 'inspector'] },
   { path: '/material-stock', label: 'Stok Material', icon: 'package', roles: ['admin', 'inspector'] },
   { path: '/tools', label: 'Tools', icon: 'wrench', roles: ['admin', 'inspector'] },
   { path: '/plan', label: 'Plan', icon: 'ganttChart', roles: ['admin', 'inspector'] },
