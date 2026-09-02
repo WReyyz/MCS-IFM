@@ -175,10 +175,7 @@ function buildPageHTML(isAdmin) {
           </div>
           <div class="pm-card-body">
             <div class="pm-form-grid">
-              <div class="pm-form-group" style="max-width:90px;">
-                <label>No. Urut <span style="color:#ef4444">*</span></label>
-                <input type="number" id="sched-seq" class="pm-input" placeholder="1" min="1">
-              </div>
+              <!-- Removed No. Urut (sched-seq) -->
               <div class="pm-form-group">
                 <label>Equipment <span style="color:#ef4444">*</span></label>
                 <select id="sched-equip" class="pm-select">
@@ -569,7 +566,7 @@ async function loadData() {
     [allWOs, allPMs, equipmentList, templateList, technicianList] = await Promise.all([
       fetchAll('work_orders', woOpts),
       fetchAll('preventive_maintenance', pmOpts),
-      fetchAll('equipment', { order: { column: 'namaEquipment', ascending: true } }),
+      fetchAll('equipment', { order: { column: 'noInventory', ascending: true } }),
       fetchAll('mds_templates', { order: { column: 'name', ascending: true } }),
       fetchAll('profiles', {
         filters: [{ column: 'role', value: 'technician' }],
@@ -1472,12 +1469,13 @@ async function saveJadwal() {
   const templateId = document.getElementById('sched-template-id')?.value;
   const freq       = parseInt(document.getElementById('sched-freq')?.value) || 30;
   const planStart  = document.getElementById('sched-start')?.value;
-  const seqNo      = parseInt(document.getElementById('sched-seq')?.value) || 0;
+  
+  const eqIndex = equipmentList.findIndex(e => e.idAset === equipId);
+  const seqNo = eqIndex !== -1 ? eqIndex + 1 : 0;
 
   if (!equipId)    { showToast('Pilih equipment',                       'warning'); return; }
   if (!templateId) { showToast('Template MDS belum ditemukan. Buat dulu di Master Template MDS.', 'warning'); return; }
   if (!planStart)  { showToast('Isi Plan Start',                        'warning'); return; }
-  if (!seqNo)      { showToast('Isi Nomor Urut (sequence)',             'warning'); return; }
 
   const existing = allPMs.find(p => p.equipment_id === equipId && p.status !== 'inactive');
   if (existing)    { showToast('Equipment ini sudah memiliki jadwal PM aktif', 'warning'); return; }
@@ -1508,7 +1506,7 @@ async function saveJadwal() {
     showToast('Jadwal PM berhasil disimpan & WO bulan ini di-generate!', 'success');
 
     // Reset form
-    ['sched-equip', 'sched-start', 'sched-seq'].forEach(id => {
+    ['sched-equip', 'sched-start'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     document.getElementById('sched-freq').value = '';
