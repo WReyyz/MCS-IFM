@@ -7,9 +7,16 @@ const ALL_MENU_ITEMS = [
   { path: '/', label: 'Dashboard', icon: 'layoutDashboard', roles: ['admin', 'inspector'] },
   { path: '/equipment', label: 'Daftar Equipment', icon: 'cpu', roles: ['admin', 'inspector'] },
   { section: 'PEMELIHARAAN' },
-  { path: '/preventive-maintenance', label: 'Preventive Maintenance', icon: 'calendarCheck', roles: ['admin', 'inspector'] },
-  { path: '/mds-templates', label: 'Master Template MDS', icon: 'clipboardCheck', roles: ['admin'] },
-  { path: '/approval', label: 'Approval Checklist', icon: 'shieldCheck', roles: ['admin', 'inspector'] },
+  // Dropdown: Preventive Maintenance (parent group)
+  {
+    label: 'Preventive Maintenance', icon: 'calendarCheck', roles: ['admin', 'inspector'],
+    dropdown: true,
+    children: [
+      { path: '/preventive-maintenance', label: 'Jadwal PM & Work Order', icon: 'clipboardList', roles: ['admin', 'inspector'] },
+      { path: '/mds-templates', label: 'Master Template MDS', icon: 'clipboardCheck', roles: ['admin'] },
+      { path: '/approval', label: 'Approval Checklist', icon: 'shieldCheck', roles: ['admin', 'inspector'] },
+    ]
+  },
   { path: '/work-order', label: 'Work Order', icon: 'clipboardList', roles: ['admin', 'inspector'] },
   { path: '/material-stock', label: 'Stok Material', icon: 'package', roles: ['admin', 'inspector'] },
   { path: '/tools', label: 'Tools', icon: 'wrench', roles: ['admin', 'inspector'] },
@@ -26,8 +33,6 @@ export function renderSidebar(container) {
   const sidebar = document.createElement('aside');
   sidebar.className = 'sidebar';
   sidebar.id = 'sidebar';
-
-  const currentPath = window.location.hash.slice(1) || '/';
 
   sidebar.innerHTML = `
     <div class="sidebar-header">
@@ -70,7 +75,7 @@ export function renderSidebar(container) {
 
   // Close sidebar on nav item click (mobile) using delegation
   sidebar.addEventListener('click', (e) => {
-    if (e.target.closest('.nav-item') && window.innerWidth <= 1024) {
+    if (e.target.closest('.nav-item:not(.nav-dropdown-toggle)') && window.innerWidth <= 1024) {
       sidebar.classList.remove('open');
       overlay.classList.remove('open');
     }
@@ -88,44 +93,107 @@ export function renderSidebar(container) {
   return sidebar;
 }
 
+function renderMenuItem(item, currentPath, userRole) {
+  // Section header
+  if (item.section) return null; // handled separately
+
+  // Dropdown parent
+  if (item.dropdown) {
+    // Filter children by role
+    const visibleChildren = item.children.filter(c => c.roles && c.roles.includes(userRole));
+    if (visibleChildren.length === 0) return '';
+
+    // Check if any child is active
+    const isChildActive = visibleChildren.some(c => currentPath === c.path);
+    const isOpen = isChildActive; // auto-open if child is active
+
+    const childrenHtml = visibleChildren.map(child => {
+      const isActive = currentPath === child.path;
+      return `
+        <a href="#${child.path}" class="nav-item nav-sub-item ${isActive ? 'active' : ''}" data-path="${child.path}">
+          ${icons[child.icon]}
+          <span>${child.label}</span>
+        </a>`;
+    }).join('');
+
+    return `
+      <div class="nav-dropdown ${isOpen ? 'open' : ''}" data-dropdown>
+        <div class="nav-item nav-dropdown-toggle ${isChildActive ? 'active' : ''}">
+          ${icons[item.icon]}
+          <span>${item.label}</span>
+          <span class="nav-dropdown-arrow">${icons.chevronDown}</span>
+        </div>
+        <div class="nav-dropdown-menu">
+          ${childrenHtml}
+        </div>
+      </div>`;
+  }
+
+  // Regular nav item
+  if (item.path) {
+    const isActive = (item.path === '/' && (currentPath === '/' || currentPath === '/dashboard')) ||
+                     (item.path !== '/' && currentPath === item.path);
+    return `
+      <a href="#${item.path}" class="nav-item ${isActive ? 'active' : ''}" data-path="${item.path}">
+        ${icons[item.icon]}
+        <span>${item.label}</span>
+      </a>`;
+  }
+
+  return '';
+}
+
 async function loadSidebarProfile() {
   try {
     const profile = await getCurrentProfile();
     const userRole = profile?.role || 'user';
     const currentPath = window.location.hash.slice(1) || '/';
-    
+
     const nav = document.getElementById('sidebar-nav');
     if (nav) {
-      let filteredItems = ALL_MENU_ITEMS.filter(item => {
-        if (item.section) return true;
-        return item.roles && item.roles.includes(userRole);
-      });
-      
-      const finalItems = [];
-      for (let i = 0; i < filteredItems.length; i++) {
-        const item = filteredItems[i];
+      // Build HTML
+      let html = '';
+      for (let i = 0; i < ALL_MENU_ITEMS.length; i++) {
+        const item = ALL_MENU_ITEMS[i];
+
+        // Section header
         if (item.section) {
-          const nextItem = filteredItems[i + 1];
-          if (nextItem && !nextItem.section) {
-            finalItems.push(item);
+          // Check if there's at least one visible item after this section
+          let hasVisible = false;
+          for (let j = i + 1; j < ALL_MENU_ITEMS.length; j++) {
+            const next = ALL_MENU_ITEMS[j];
+            if (next.section) break;
+            if (next.dropdown) {
+              const visibleChildren = next.children.filter(c => c.roles && c.roles.includes(userRole));
+              if (visibleChildren.length > 0) { hasVisible = true; break; }
+            } else if (next.roles && next.roles.includes(userRole)) {
+              hasVisible = true; break;
+            }
           }
-        } else {
-          finalItems.push(item);
+          if (hasVisible) {
+            html += `<div class="nav-section"><div class="nav-section-title">${item.section}</div></div>`;
+          }
+          continue;
         }
+
+        // Skip items not visible for this role
+        if (!item.dropdown && item.roles && !item.roles.includes(userRole)) continue;
+
+        html += renderMenuItem(item, currentPath, userRole) || '';
       }
 
-      nav.innerHTML = finalItems.map(item => {
-        if (item.section) {
-          return `<div class="nav-section"><div class="nav-section-title">${item.section}</div></div>`;
-        }
-        const isActive = (item.path === '/' && (currentPath === '/' || currentPath === '/dashboard')) ||
-                         (item.path !== '/' && currentPath === item.path);
-        return `
-          <a href="#${item.path}" class="nav-item ${isActive ? 'active' : ''}" data-path="${item.path}">
-            ${icons[item.icon]}
-            <span>${item.label}</span>
-          </a>`;
-      }).join('');
+      nav.innerHTML = html;
+
+      // Attach dropdown toggle listeners
+      nav.querySelectorAll('.nav-dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', (e) => {
+          e.preventDefault();
+          const dropdown = toggle.closest('[data-dropdown]');
+          if (dropdown) {
+            dropdown.classList.toggle('open');
+          }
+        });
+      });
     }
 
     if (profile) {
@@ -149,4 +217,3 @@ export function toggleMobileSidebar() {
     overlay.classList.toggle('open');
   }
 }
-
