@@ -103,19 +103,19 @@ function renderTable(data) {
       <table class="table table-hover table-bordered mb-0">
         <thead>
           <tr>
-            <th>ID SISTEM</th><th>NAMA EQUIPMENT</th><th>AREA</th><th>KATEGORI</th><th>NO INVENTORY</th><th>MANUFACTURE/VENDOR</th><th>TYPE</th><th>REQUIREMENTS</th><th>QR CODE</th><th>AKSI</th>
+            <th style="width: 50px; text-align: center;">NO</th><th>NAMA EQUIPMENT</th><th>AREA</th><th>KATEGORI</th><th>NO INVENTORY</th><th>MANUFACTURE/VENDOR</th><th>TYPE</th><th>REQUIREMENTS</th><th>QR CODE</th><th>AKSI</th>
           </tr>
         </thead>
         <tbody>
-          ${data.map(e => {
+          ${data.map((e, index) => {
             const reqCount = requirementCountsMap[e.idAset] || 0;
             return `
             <tr>
-              <td><span class="equipment-code">${escapeHtml(e.idAset)}</span></td>
+              <td style="text-align: center;" class="fw-semibold text-muted">${index + 1}</td>
               <td class="fw-semibold">${escapeHtml(e.namaEquipment)}</td>
               <td>${escapeHtml(e.area || '-')}</td>
               <td>${escapeHtml(e.kategori || '-')}</td>
-              <td>${escapeHtml(e.noInventory || '-')}</td>
+              <td><span class="equipment-code">${escapeHtml(e.noInventory || '-')}</span></td>
               <td>${escapeHtml(e.manuf || '-')}</td>
               <td>${escapeHtml(e.type || '-')}</td>
               <td>
