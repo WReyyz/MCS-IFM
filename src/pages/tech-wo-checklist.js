@@ -19,6 +19,26 @@ export async function renderTechWoChecklist() {
       .eq('id', woId).single();
     if (error || !wo) throw error || new Error('WO Not Found');
 
+    // Guard: hanya boleh isi MDS jika status 'diploting' atau 'revisi'
+    // Jika sudah 'menunggu_approval' atau 'closed', redirect kembali
+    if (!['diploting', 'revisi'].includes(wo.status)) {
+      const statusMsg = wo.status === 'menunggu_approval'
+        ? 'MDS ini sudah disubmit dan sedang menunggu approval Inspector. Tidak bisa diedit kecuali dikembalikan (revisi) oleh Inspector.'
+        : wo.status === 'closed'
+          ? 'WO ini sudah di-approve dan ditutup.'
+          : 'WO ini tidak dalam status yang bisa diisi.';
+      content.innerHTML = `
+        <div style="background:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
+          <div class="text-center" style="max-width:400px;">
+            <div style="font-size:3rem;margin-bottom:16px;">🔒</div>
+            <h5 class="fw-bold mb-3">Form MDS Terkunci</h5>
+            <p class="text-muted mb-4">${statusMsg}</p>
+            <a href="#/tech-wo-list" class="btn btn-primary px-4">← Kembali ke Daftar WO</a>
+          </div>
+        </div>`;
+      return;
+    }
+
     const templateId = wo.mds_template_id || wo.preventive_maintenance?.mds_template_id;
     let checklist = [];
     if (wo.type === 'preventive' && templateId) {
@@ -359,6 +379,9 @@ function renderChecklistUI(content, wo, groupedTasks, profile, teamNames) {
 
     try {
       if (wo.type === 'preventive') {
+        // Hapus hasil checklist lama jika ada (penting untuk status 'revisi' / re-submit)
+        await supabase.from('wo_checklist_results').delete().eq('wo_id', wo.id);
+
         const dbR = results.map(r => ({
           wo_id: wo.id,
           template_item_id: r.template_item_id || null,

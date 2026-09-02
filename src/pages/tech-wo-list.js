@@ -53,10 +53,13 @@ export async function renderTechWoList() {
     });
 
     // WO Preventive aktif yang di-assign ke teknisi ini
-    // Tampilkan semua status aktif (diploting, revisi, menunggu_approval), bukan hanya hari ini
+    // Hanya tampilkan status yang bisa di-action oleh teknisi:
+    //   - diploting: belum dikerjakan
+    //   - revisi: dikembalikan oleh inspector untuk perbaikan
+    // Status 'menunggu_approval' dan 'closed' TIDAK ditampilkan (sudah selesai dikerjakan)
     const preventiveToday = allWOs.filter(wo =>
       wo.type === 'preventive' &&
-      ['diploting', 'revisi', 'menunggu_approval'].includes(wo.status)
+      ['diploting', 'revisi'].includes(wo.status)
     );
 
     // WO Corrective active (open / hold)
@@ -189,9 +192,10 @@ async function showWODetail(wo) {
     ? teamNames.map(n => `<span class="badge me-1" style="background:#dbeafe;color:#1e40af;font-weight:500;">${escapeHtml(n)}</span>`).join('')
     : `<span class="text-muted small">${escapeHtml(wo.profiles?.full_name || '-')}</span>`;
 
-  // WO PM: bisa isi MDS jika status diploting atau menunggu_approval (untuk revisi)
-  const isPreventive = wo.type === 'preventive';
-  const canFillMDS   = isPreventive && ['diploting', 'revisi', 'menunggu_approval'].includes(wo.status);
+    // WO PM: bisa isi MDS HANYA jika status diploting atau revisi
+    // Status 'menunggu_approval' = sudah diisi, tunggu inspector → TIDAK bisa edit lagi
+    const isPreventive = wo.type === 'preventive';
+    const canFillMDS   = isPreventive && ['diploting', 'revisi'].includes(wo.status);
   // WO Corrective: bisa di-close jika open / hold
   const canClose     = !isPreventive && (wo.status === 'open' || wo.status === 'hold');
 
