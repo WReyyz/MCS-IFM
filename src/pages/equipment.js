@@ -58,7 +58,7 @@ export async function renderEquipment() {
 async function loadEquipment() {
   try {
     [allEquipment, technicianList] = await Promise.all([
-      fetchAll('equipment', { order: { column: 'created_at', ascending: false } }),
+      fetchAll('equipment', { order: { column: 'noInventory', ascending: true } }),
       fetchAll('profiles', { filters: [{ column: 'role', value: 'technician' }], order: { column: 'full_name', ascending: true } }),
     ]);
     // Load requirement counts
