@@ -1495,15 +1495,14 @@ async function saveJadwal() {
     // Generate WO untuk bulan sesuai plan_start
     try {
       const pDate = new Date(planStart);
-      await supabase.rpc('generate_monthly_pm_work_orders', {
-        p_year:  pDate.getFullYear(),
-        p_month: pDate.getMonth() + 1,
-      });
+      await supabase.rpc('generate_yearly_pm_work_orders', {
+          p_year:  pDate.getFullYear()
+        });
     } catch (genErr) {
       console.warn('Generate monthly WO error (non-fatal):', genErr);
     }
 
-    showToast('Jadwal PM berhasil disimpan & WO bulan ini di-generate!', 'success');
+    showToast('Jadwal PM berhasil disimpan & plan WO 1 tahun di-generate!', 'success');
 
     // Reset form
     ['sched-equip', 'sched-start'].forEach(id => {
@@ -1533,23 +1532,23 @@ async function handleGenerateWO() {
 
   showConfirm({
     title: 'Generate Work Order PM',
-    message: `Generate Work Order PM untuk bulan ${monthName}?`,
+    message: `Generate plan Work Order PM untuk 1 tahun ke depan (${year})?`,
     confirmText: 'Generate',
     confirmClass: 'btn-primary',
     onConfirm: async () => {
       const btn = document.getElementById('btn-generate-wo');
       if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
       try {
-        const { error } = await supabase.rpc('generate_monthly_pm_work_orders', {
-          p_year: year, p_month: month
-        });
+        const { error } = await supabase.rpc('generate_yearly_pm_work_orders', {
+            p_year: year
+          });
         if (error) throw error;
-        showToast('Work Order bulan ini berhasil di-generate!', 'success');
+        showToast('Work Order 1 tahun berhasil di-generate!', 'success');
         await loadData();
       } catch (err) {
         showToast('Gagal: ' + (err.message || ''), 'error');
       } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = `${icons.plus || '+'} Generate WO Bulan Ini`; }
+        if (btn) { btn.disabled = false; btn.innerHTML = `${icons.plus || '+'} Generate WO 1 Tahun`; }
       }
     }
   });
