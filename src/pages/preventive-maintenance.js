@@ -46,6 +46,7 @@ export async function renderPreventiveMaintenance() {
 
   // ── Tab WO: filter area/interval selects ──
   content.querySelector('#filter-area')?.addEventListener('change', renderWoTable);
+    content.querySelector('#filter-month')?.addEventListener('change', renderWoTable);
   content.querySelector('#filter-interval')?.addEventListener('change', renderWoTable);
 
   // ── Tab WO: chip filter ──
@@ -132,6 +133,24 @@ function buildPageHTML(isAdmin) {
               <label class="pm-filter-label">Area</label>
               <select class="pm-filter-select" id="filter-area">
                 <option value="">Semua Area</option>
+              </select>
+            </div>
+            <div>
+              <label class="pm-filter-label">Bulan</label>
+              <select class="pm-filter-select" id="filter-month">
+                <option value="">Semua Bulan</option>
+                <option value="1">Januari</option>
+                <option value="2">Februari</option>
+                <option value="3">Maret</option>
+                <option value="4">April</option>
+                <option value="5">Mei</option>
+                <option value="6">Juni</option>
+                <option value="7">Juli</option>
+                <option value="8">Agustus</option>
+                <option value="9">September</option>
+                <option value="10">Oktober</option>
+                <option value="11">November</option>
+                <option value="12">Desember</option>
               </select>
             </div>
             <div>
@@ -724,6 +743,7 @@ function renderWoTable() {
 
   const areaFilter     = document.getElementById('filter-area')?.value     || '';
   const intervalFilter = document.getElementById('filter-interval')?.value || '';
+  const monthFilter    = document.getElementById('filter-month')?.value    || '';
 
   const data = allWOs.filter(wo => {
     const eff = isOverdue(wo) ? 'overdue' : wo.status;
@@ -739,6 +759,11 @@ function renderWoTable() {
     if (intervalFilter) {
       const pmSched = allPMs.find(p => p.equipment_id === wo.equipment_id);
       if (String(pmSched?.interval_days) !== intervalFilter) return false;
+    }
+    
+    if (monthFilter) {
+      const woDate = new Date(wo.opened_at || wo.plan_start);
+      if (!isNaN(woDate) && (woDate.getMonth() + 1).toString() !== monthFilter) return false;
     }
 
     return true;
