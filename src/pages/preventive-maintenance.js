@@ -690,9 +690,23 @@ function autoFillTemplateByEquipment(equipId) {
 // ─── Chip counts ──────────────────────────────────────────────────────────────
 
 function updateChipCounts() {
-  let gen = 0, dip = 0, app = 0, cls = 0, ovd = 0;
-  for (const wo of allWOs) {
-    if (isOverdue(wo))                   { ovd++; continue; }
+    const areaFilter     = document.getElementById('filter-area')?.value     || '';
+    const intervalFilter = document.getElementById('filter-interval')?.value || '';
+    const monthFilter    = document.getElementById('filter-month')?.value    || '';
+
+    let gen = 0, dip = 0, app = 0, cls = 0, ovd = 0;
+    for (const wo of allWOs) {
+      if (areaFilter && wo.equipment?.area !== areaFilter) continue;
+      if (intervalFilter) {
+        const pmSched = allPMs.find(p => p.equipment_id === wo.equipment_id);
+        if (String(pmSched?.interval_days) !== intervalFilter) continue;
+      }
+      if (monthFilter) {
+        const woDate = new Date(wo.opened_at || wo.plan_start);
+        if (!isNaN(woDate) && (woDate.getMonth() + 1).toString() !== monthFilter) continue;
+      }
+
+      if (isOverdue(wo))                   { ovd++; continue; }
     if (wo.status === 'generated')         gen++;
     else if (wo.status === 'diploting')    dip++;
     else if (wo.status === 'menunggu_approval') app++;
@@ -737,7 +751,8 @@ function statusBadge(status) {
 // ─── Render WO Table ──────────────────────────────────────────────────────────
 
 function renderWoTable() {
-  const wrapper = document.getElementById('pm-wo-table-wrapper');
+    updateChipCounts();
+    const wrapper = document.getElementById('pm-wo-table-wrapper');
   if (!wrapper) return;
   const isAdmin = currentProfile?.role === 'admin';
 
