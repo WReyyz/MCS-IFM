@@ -4,22 +4,22 @@ import { icons } from './icons.js';
 
 const ALL_MENU_ITEMS = [
   { section: 'UTAMA' },
-  { path: '/', label: 'Dashboard', icon: 'layoutDashboard', roles: ['admin', 'inspector'] },
-  { path: '/equipment', label: 'Daftar Equipment', icon: 'cpu', roles: ['admin', 'inspector'] },
+  { path: '/', label: 'Dashboard', icon: 'layoutDashboard', roles: ['admin', 'inspector', 'manager', 'planner'] },
+  { path: '/equipment', label: 'Daftar Equipment', icon: 'cpu', roles: ['admin', 'inspector', 'planner', 'manager'] },
   { section: 'PEMELIHARAAN' },
-  { path: '/preventive-maintenance', label: 'Preventive Maintenance', icon: 'calendarCheck', roles: ['admin', 'inspector'] },
-  { path: '/mds-templates', label: 'Master Template MDS', icon: 'clipboardCheck', roles: ['admin'] },
+  { path: '/preventive-maintenance', label: 'Preventive Maintenance', icon: 'calendarCheck', roles: ['admin', 'inspector', 'planner', 'manager'] },
+  { path: '/mds-templates', label: 'Master Template MDS', icon: 'clipboardCheck', roles: ['admin', 'planner'] },
   { path: '/approval', label: 'Inspection', icon: 'shieldCheck', roles: ['admin', 'inspector'] },
-  { path: '/work-order', label: 'Corective', icon: 'clipboardList', roles: ['admin', 'inspector'] },
-  { path: '/material-stock', label: 'Stok Material', icon: 'package', roles: ['admin', 'inspector'] },
-  { path: '/tools', label: 'Tools', icon: 'wrench', roles: ['admin', 'inspector'] },
-  { path: '/plan', label: 'Plan', icon: 'ganttChart', roles: ['admin', 'inspector'] },
+  { path: '/work-order', label: 'Corective', icon: 'clipboardList', roles: ['admin', 'inspector', 'planner'] },
+  { path: '/material-stock', label: 'Stok Material', icon: 'package', roles: ['admin', 'inspector', 'planner'] },
+  { path: '/tools', label: 'Tools', icon: 'wrench', roles: ['admin', 'planner'] },
+  { path: '/plan', label: 'Plan', icon: 'ganttChart', roles: ['admin', 'planner'] },
   { section: 'MANAJEMEN' },
-  { path: '/technician', label: 'Jadwal & Teknisi', icon: 'calendarCheck', roles: ['admin'] },
+  { path: '/technician', label: 'Jadwal & Teknisi', icon: 'calendarCheck', roles: ['admin', 'planner'] },
   { path: '/user-controller', label: 'Kontrol Pengguna', icon: 'shield', roles: ['admin'] },
   { path: '/admin-broadcast', label: 'Broadcast Notifikasi', icon: 'broadcast', roles: ['admin'] },
   { section: 'AKUN' },
-  { path: '/profile', label: 'Profil Saya', icon: 'user', roles: ['admin', 'inspector'] },
+  { path: '/profile', label: 'Profil Saya', icon: 'user', roles: ['admin', 'inspector', 'planner', 'manager'] },
 ];
 
 export function renderSidebar(container) {
