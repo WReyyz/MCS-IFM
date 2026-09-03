@@ -91,7 +91,7 @@ function buildPageHTML(isAdmin) {
         <div class="pm-header-right">
           ${isAdmin ? `
             <button class="pm-btn-generate" id="btn-generate-wo">
-              ${icons.plus || '+'} Generate WO Bulan Ini
+              ${icons.plus || '+'} Generate WO 1 Tahun
             </button>
           ` : ''}
         </div>
