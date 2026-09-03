@@ -817,7 +817,7 @@ function renderWoRow(wo, isAdmin) {
 
   const pmSched  = allPMs.find(p => p.equipment_id === wo.equipment_id);
   const interval = intervalLabel(pmSched?.interval_days);
-  const nextPlan = formatDate(wo.next_due || pmSched?.next_due);
+  const nextPlan = formatDate(wo.opened_at || wo.plan_start || pmSched?.next_due);
 
   // Tampilkan semua nama tim dari wo_assignees, fallback ke assignee.full_name
   const teamNames = woAssigneesMap[wo.id];
