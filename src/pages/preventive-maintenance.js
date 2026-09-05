@@ -17,6 +17,8 @@ let activeTab      = 'wo';        // 'wo' | 'jadwal'
 let searchQuery    = '';
 // Map: wo_id -> array of technician full_name (dari tabel wo_assignees)
 let woAssigneesMap = {};          // { 'wo-uuid': ['Nama A', 'Nama B'] }
+// Multi-select equipment state
+let selectedEquipIds = new Set(); // Set of selected equipment idAset
 
 // ─── Entry point ─────────────────────────────────────────────────────────────
 export async function renderPreventiveMaintenance() {
@@ -64,13 +66,9 @@ export async function renderPreventiveMaintenance() {
     content.querySelector('#btn-generate-wo')?.addEventListener('click', handleGenerateWO);
   }
 
-  // ── Tab Jadwal: equipment change → auto-detect template MDS ──
-  content.querySelector('#sched-equip')?.addEventListener('change', e => {
-    autoFillTemplateByEquipment(e.target.value);
-  });
-
-  // ── Tab Jadwal: save schedule ──
+  // ── Tab Jadwal: multi-select equipment dropdown ──
   if (isAdmin) {
+    initEquipMultiSelect(content);
     content.querySelector('#btn-save-jadwal')?.addEventListener('click', saveJadwal);
   }
 
@@ -197,9 +195,11 @@ function buildPageHTML(isAdmin) {
               <!-- Removed No. Urut (sched-seq) -->
               <div class="pm-form-group">
                 <label>Equipment <span style="color:#ef4444">*</span></label>
-                <select id="sched-equip" class="pm-select">
-                  <option value="">Pilih Equipment...</option>
-                </select>
+                <!-- Custom multi-select trigger (panel dibuat oleh JS dan di-append ke body) -->
+                <div id="equip-ms-trigger" class="equip-ms-trigger" tabindex="0">
+                  <span id="equip-ms-label" class="equip-ms-label-placeholder">Pilih Equipment...</span>
+                  <svg class="equip-ms-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
               </div>
               <div class="pm-form-group" style="max-width:220px;">
                 <label>Template MDS (otomatis)</label>
@@ -532,6 +532,87 @@ function injectStyles() {
       transition: background .15s;
     }
     .pm-btn-primary:hover { background: #15803d; }
+
+    /* ── Equipment multi-select ── */
+    .equip-ms-trigger {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; border-radius: 8px;
+      border: 1px solid var(--border-color, #d1d5db);
+      background: var(--bg-secondary, #f9fafb);
+      font-size: 0.85rem; color: var(--text-primary);
+      cursor: pointer; user-select: none; min-height: 37px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .equip-ms-trigger:hover, .equip-ms-trigger:focus {
+      border-color: #2563eb; outline: none;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+    .equip-ms-label-placeholder { color: var(--text-secondary, #9ca3af); font-style: italic; }
+    .equip-ms-label-selected { color: var(--text-primary); font-style: normal; font-weight: 600; }
+    .equip-ms-arrow { flex-shrink: 0; color: var(--text-secondary); transition: transform .2s; }
+    .equip-ms-arrow.open { transform: rotate(180deg); }
+    .equip-ms-panel {
+      position: fixed;
+      z-index: 99999;
+      background: var(--card-bg, #fff);
+      border: 1px solid var(--border-color, #d1d5db);
+      border-radius: 10px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.15);
+      overflow: hidden;
+      min-width: 340px;
+    }
+    .equip-ms-search-wrap {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color, #e5e7eb);
+    }
+    .equip-ms-search {
+      flex: 1; border: none; outline: none; background: transparent;
+      font-size: 0.85rem; color: var(--text-primary);
+    }
+    .equip-ms-list {
+      max-height: 260px; overflow-y: auto;
+      padding: 6px 0;
+    }
+    .equip-ms-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 14px; cursor: pointer;
+      font-size: 0.84rem; color: var(--text-primary);
+      transition: background .1s;
+      border-bottom: 1px solid transparent;
+    }
+    .equip-ms-item:hover { background: var(--bg-secondary, #f9fafb); }
+    .equip-ms-item.selected { background: #eff6ff; }
+    .equip-ms-item input[type="checkbox"] {
+      width: 16px; height: 16px; flex-shrink: 0; cursor: pointer;
+      accent-color: #2563eb;
+    }
+    .equip-ms-item-text { flex: 1; line-height: 1.35; }
+    .equip-ms-item-name { font-weight: 600; font-size: .84rem; }
+    .equip-ms-item-sub { font-size: .73rem; color: var(--text-secondary); }
+    .equip-ms-divider {
+      border: none; border-top: 1px solid var(--border-color, #e5e7eb);
+      margin: 4px 0;
+    }
+    .equip-ms-footer {
+      display: flex; gap: 8px; justify-content: flex-end;
+      padding: 10px 12px;
+      border-top: 1px solid var(--border-color, #e5e7eb);
+      background: var(--bg-secondary, #f9fafb);
+    }
+    .equip-ms-btn-cancel {
+      padding: 7px 16px; border-radius: 7px; font-size: .84rem; font-weight: 600;
+      border: 1px solid var(--border-color, #d1d5db);
+      background: var(--card-bg, #fff); color: var(--text-primary); cursor: pointer;
+      transition: background .13s;
+    }
+    .equip-ms-btn-cancel:hover { background: var(--bg-secondary, #f3f4f6); }
+    .equip-ms-btn-apply {
+      padding: 7px 18px; border-radius: 7px; font-size: .84rem; font-weight: 600;
+      border: none; background: #2563eb; color: #fff; cursor: pointer;
+      transition: background .13s;
+    }
+    .equip-ms-btn-apply:hover { background: #1d4ed8; }
     .pm-badge-count {
       background: var(--bg-secondary, #f3f4f6);
       padding: 2px 10px; border-radius: 999px;
@@ -634,48 +715,286 @@ function populateFilterSelects() {
 
 function populateFormSelects() {
   if (currentProfile?.role !== 'admin') return;
-
-  const eqEl = document.getElementById('sched-equip');
-  if (eqEl) {
-    // Filter: hanya equipment yang belum punya jadwal PM aktif
-    const scheduledIds = allPMs
-      .filter(p => p.status !== 'inactive')
-      .map(p => p.equipment_id);
-
-    eqEl.innerHTML = '<option value="">Pilih Equipment...</option>' +
-      equipmentList
-        .filter(e => !scheduledIds.includes(e.idAset))
-        .map(e => {
-          const noInv = e.noInventory || e.idAset || '-';
-          const nm = e.namaEquipment || '-';
-          const ar = e.area || '-';
-          return `<option value="${e.idAset}" data-name="${escapeHtml(nm)}">${escapeHtml(noInv)} - ${escapeHtml(nm)} - ${escapeHtml(ar)}</option>`;
-        })
-        .join('');
-  }
+  buildEquipMultiSelectItems();
 }
 
-// Auto-isi template MDS berdasarkan nama equipment yang dipilih
-function autoFillTemplateByEquipment(equipId) {
+/** Rebuild the item list inside the multi-select panel */
+function buildEquipMultiSelectItems() {
+  const list = document.getElementById('equip-ms-list');
+  if (!list) return;
+
+  // Filter: hanya equipment yang belum punya jadwal PM aktif
+  const scheduledIds = allPMs
+    .filter(p => p.status !== 'inactive')
+    .map(p => p.equipment_id);
+
+  const available = equipmentList.filter(e => !scheduledIds.includes(e.idAset));
+
+  if (available.length === 0) {
+    list.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-secondary);font-size:.84rem;">Semua equipment sudah memiliki jadwal PM aktif.</div>`;
+    return;
+  }
+
+  // Select All row
+  const allChecked = available.length > 0 && available.every(e => selectedEquipIds.has(e.idAset));
+  let html = `
+    <div class="equip-ms-item" id="equip-ms-select-all">
+      <input type="checkbox" id="equip-ms-chk-all" ${allChecked ? 'checked' : ''}>
+      <div class="equip-ms-item-text">
+        <div class="equip-ms-item-name">Pilih Semua</div>
+        <div class="equip-ms-item-sub">${available.length} equipment tersedia</div>
+      </div>
+    </div>
+    <hr class="equip-ms-divider">`;
+
+  html += available.map(e => {
+    const noInv = escapeHtml(e.noInventory || e.idAset || '-');
+    const nm    = escapeHtml(e.namaEquipment || '-');
+    const ar    = escapeHtml(e.area || '-');
+    const chk   = selectedEquipIds.has(e.idAset) ? 'checked' : '';
+    return `
+      <div class="equip-ms-item${selectedEquipIds.has(e.idAset) ? ' selected' : ''}" data-equip-id="${e.idAset}">
+        <input type="checkbox" class="equip-ms-chk" data-equip-id="${e.idAset}" ${chk}>
+        <div class="equip-ms-item-text">
+          <div class="equip-ms-item-name">${noInv} – ${nm}</div>
+          <div class="equip-ms-item-sub">${ar}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  list.innerHTML = html;
+
+  // Bind select-all
+  list.querySelector('#equip-ms-chk-all')?.addEventListener('change', e => {
+    const query = document.getElementById('equip-ms-search')?.value.toLowerCase() || '';
+    const visibleItems = [...list.querySelectorAll('.equip-ms-item[data-equip-id]')]
+      .filter(el => el.style.display !== 'none');
+    if (e.target.checked) {
+      visibleItems.forEach(el => {
+        const id = el.dataset.equipId;
+        selectedEquipIds.add(id);
+        el.classList.add('selected');
+        const chk = el.querySelector('input[type=checkbox]');
+        if (chk) chk.checked = true;
+      });
+    } else {
+      visibleItems.forEach(el => {
+        const id = el.dataset.equipId;
+        selectedEquipIds.delete(id);
+        el.classList.remove('selected');
+        const chk = el.querySelector('input[type=checkbox]');
+        if (chk) chk.checked = false;
+      });
+    }
+    updateEquipMsTriggerLabel();
+  });
+
+  // Bind individual checkboxes
+  list.querySelectorAll('.equip-ms-chk').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const id = chk.dataset.equipId;
+      const item = chk.closest('.equip-ms-item');
+      if (chk.checked) {
+        selectedEquipIds.add(id);
+        item?.classList.add('selected');
+      } else {
+        selectedEquipIds.delete(id);
+        item?.classList.remove('selected');
+      }
+      syncSelectAllCheckbox();
+      updateEquipMsTriggerLabel();
+    });
+  });
+
+  // Click on item row (not just checkbox)
+  list.querySelectorAll('.equip-ms-item[data-equip-id]').forEach(item => {
+    item.addEventListener('click', e => {
+      if (e.target.tagName === 'INPUT') return;
+      const chk = item.querySelector('input[type=checkbox]');
+      if (chk) { chk.checked = !chk.checked; chk.dispatchEvent(new Event('change')); }
+    });
+  });
+}
+
+// ─── Multi-select helpers ─────────────────────────────────────────────────────
+
+function updateEquipMsTriggerLabel() {
+  const label = document.getElementById('equip-ms-label');
+  if (!label) return;
+  if (selectedEquipIds.size === 0) {
+    label.textContent = 'Pilih Equipment...';
+    label.className = 'equip-ms-label-placeholder';
+  } else {
+    label.textContent = `${selectedEquipIds.size} Equipment dipilih`;
+    label.className = 'equip-ms-label-selected';
+  }
+  // Refresh template info
+  autoFillTemplateByEquipment();
+}
+
+function syncSelectAllCheckbox() {
+  const list = document.getElementById('equip-ms-list');
+  if (!list) return;
+  const allItems = [...list.querySelectorAll('.equip-ms-item[data-equip-id]')]
+    .filter(el => el.style.display !== 'none');
+  const chkAll = list.querySelector('#equip-ms-chk-all');
+  if (!chkAll) return;
+  chkAll.checked = allItems.length > 0 && allItems.every(el => {
+    const c = el.querySelector('input[type=checkbox]');
+    return c && c.checked;
+  });
+}
+
+function filterEquipMsItems(query) {
+  const list = document.getElementById('equip-ms-list');
+  if (!list) return;
+  const q = query.toLowerCase();
+  let visibleCount = 0;
+  list.querySelectorAll('.equip-ms-item[data-equip-id]').forEach(item => {
+    const text = item.textContent.toLowerCase();
+    const show = !q || text.includes(q);
+    item.style.display = show ? '' : 'none';
+    if (show) visibleCount++;
+  });
+  // Update select-all sub text
+  const sub = list.querySelector('#equip-ms-select-all .equip-ms-item-sub');
+  if (sub) sub.textContent = `${visibleCount} equipment terlihat`;
+  syncSelectAllCheckbox();
+}
+
+function initEquipMultiSelect(root) {
+  const trigger = root.querySelector('#equip-ms-trigger');
+  const arrow   = root.querySelector('.equip-ms-arrow');
+  if (!trigger) return;
+
+  // ── Buat panel via portal (append ke body agar tidak terpotong overflow) ──
+  const panel = document.createElement('div');
+  panel.id = 'equip-ms-panel';
+  panel.className = 'equip-ms-panel';
+  panel.style.display = 'none';
+  panel.innerHTML = `
+    <div class="equip-ms-search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="flex-shrink:0;color:#9ca3af;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="equip-ms-search" class="equip-ms-search" placeholder="Cari equipment...">
+    </div>
+    <div class="equip-ms-list" id="equip-ms-list"></div>
+    <div class="equip-ms-footer">
+      <button type="button" id="equip-ms-cancel" class="equip-ms-btn-cancel">Batal</button>
+      <button type="button" id="equip-ms-apply" class="equip-ms-btn-apply">Terapkan</button>
+    </div>
+  `;
+  document.body.appendChild(panel);
+
+  const search = panel.querySelector('#equip-ms-search');
+  const cancel = panel.querySelector('#equip-ms-cancel');
+  const apply  = panel.querySelector('#equip-ms-apply');
+
+  /** Posisikan panel tepat di bawah trigger menggunakan viewport coords */
+  const positionPanel = () => {
+    const rect = trigger.getBoundingClientRect();
+    const panelW = Math.max(rect.width, 340);
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+
+    panel.style.width  = panelW + 'px';
+    panel.style.left   = rect.left + 'px';
+
+    // Buka ke atas jika ruang bawah tidak cukup
+    if (spaceBelow < 280 && spaceAbove > spaceBelow) {
+      const maxH = Math.min(spaceAbove - 8, 400);
+      panel.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+      panel.style.top    = 'auto';
+      panel.querySelector('.equip-ms-list').style.maxHeight = (maxH - 120) + 'px';
+    } else {
+      panel.style.top    = (rect.bottom + 4) + 'px';
+      panel.style.bottom = 'auto';
+      const maxH = Math.min(spaceBelow, 320);
+      panel.querySelector('.equip-ms-list').style.maxHeight = (maxH - 100) + 'px';
+    }
+  };
+
+  let isOpen = false;
+
+  const open = () => {
+    if (isOpen) return;
+    isOpen = true;
+    panel.style.display = '';
+    positionPanel();
+    arrow?.classList.add('open');
+    search?.focus();
+  };
+
+  const close = () => {
+    if (!isOpen) return;
+    isOpen = false;
+    panel.style.display = 'none';
+    arrow?.classList.remove('open');
+    if (search) search.value = '';
+    filterEquipMsItems('');
+  };
+
+  trigger.addEventListener('click', () => isOpen ? close() : open());
+  trigger.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); isOpen ? close() : open(); }
+    if (e.key === 'Escape') close();
+  });
+
+  search?.addEventListener('input', e => filterEquipMsItems(e.target.value));
+  cancel?.addEventListener('click', close);
+  apply?.addEventListener('click',  close);
+
+  // Reposisi saat scroll/resize
+  const reposition = () => { if (isOpen) positionPanel(); };
+  window.addEventListener('resize', reposition);
+  document.addEventListener('scroll', reposition, true);
+
+  // Tutup saat klik di luar
+  document.addEventListener('mousedown', e => {
+    if (!trigger.contains(e.target) && !panel.contains(e.target)) close();
+  }, true);
+
+  // Cleanup: hapus panel dari body saat halaman diganti (SPA navigation)
+  const observer = new MutationObserver(() => {
+    if (!document.contains(trigger)) {
+      panel.remove();
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+// Auto-isi template MDS — sekarang multi-select (tampilkan ringkasan)
+function autoFillTemplateByEquipment() {
   const infoEl  = document.getElementById('sched-template-info');
   const hiddenEl = document.getElementById('sched-template-id');
   const freqEl  = document.getElementById('sched-freq');
   if (!infoEl) return;
 
-  if (!equipId) {
+  if (selectedEquipIds.size === 0) {
     infoEl.innerHTML  = '<span class="pm-template-placeholder">— Pilih equipment dahulu —</span>';
     if (hiddenEl) hiddenEl.value = '';
     if (freqEl)  freqEl.value   = '';
     return;
   }
 
-  // Cari nama equipment
+  if (selectedEquipIds.size > 1) {
+    // Multi: cek berapa yang punya template
+    let found = 0;
+    selectedEquipIds.forEach(id => {
+      const eq = equipmentList.find(e => e.idAset === id);
+      if (eq && templateList.find(t => t.name === eq.namaEquipment)) found++;
+    });
+    infoEl.innerHTML = `<span class="pm-template-found">✓ ${found} dari ${selectedEquipIds.size} equipment memiliki template MDS</span>`;
+    if (hiddenEl) hiddenEl.value = '__multi__';
+    if (freqEl)  freqEl.value   = '-';
+    return;
+  }
+
+  // Single selection
+  const equipId = [...selectedEquipIds][0];
   const eq = equipmentList.find(e => e.idAset === equipId);
   if (!eq) return;
-
-  // Cari template yang namanya = namaEquipment
   const tpl = templateList.find(t => t.name === eq.namaEquipment);
-
   if (tpl) {
     infoEl.innerHTML   = `<span class="pm-template-found">✓ ${escapeHtml(tpl.name)} (${tpl.interval_days} hari)</span>`;
     if (hiddenEl) hiddenEl.value = tpl.id;
@@ -1505,49 +1824,71 @@ async function renderMonthlyWoPreview() {
 // ─── Save Jadwal ──────────────────────────────────────────────────────────────
 
 async function saveJadwal() {
-  const equipId    = document.getElementById('sched-equip')?.value;
-  const templateId = document.getElementById('sched-template-id')?.value;
-  const freq       = parseInt(document.getElementById('sched-freq')?.value) || 30;
   const planStart  = document.getElementById('sched-start')?.value;
-  
-  const eqIndex = equipmentList.findIndex(e => e.idAset === equipId);
-  const seqNo = eqIndex !== -1 ? eqIndex + 1 : 0;
 
-  if (!equipId)    { showToast('Pilih equipment',                       'warning'); return; }
-  if (!templateId) { showToast('Template MDS belum ditemukan. Buat dulu di Master Template MDS.', 'warning'); return; }
-  if (!planStart)  { showToast('Isi Plan Start',                        'warning'); return; }
-
-  const existing = allPMs.find(p => p.equipment_id === equipId && p.status !== 'inactive');
-  if (existing)    { showToast('Equipment ini sudah memiliki jadwal PM aktif', 'warning'); return; }
+  if (selectedEquipIds.size === 0) { showToast('Pilih minimal 1 equipment', 'warning'); return; }
+  if (!planStart)                  { showToast('Isi Plan Start', 'warning'); return; }
 
   const btn = document.getElementById('btn-save-jadwal');
   btn.disabled = true; btn.textContent = 'Menyimpan...';
 
-  try {
-    await insertRow('preventive_maintenance', {
-      title: 'PREVENTIVE', equipment_id: equipId,
-      mds_template_id: templateId, interval_days: freq,
-      plan_start: planStart, next_due: planStart,
-      sequence_no: seqNo,
-      status: 'scheduled', description: '',
-    });
+  let savedCount  = 0;
+  let skipCount   = 0;
+  let noTplCount  = 0;
+  const errors    = [];
 
-    // Generate WO untuk bulan sesuai plan_start
-    try {
-      const pDate = new Date(planStart);
-      await supabase.rpc('generate_yearly_pm_work_orders', {
-          p_year:  pDate.getFullYear()
+  try {
+    for (const equipId of selectedEquipIds) {
+      // Skip jika sudah ada jadwal aktif
+      const existing = allPMs.find(p => p.equipment_id === equipId && p.status !== 'inactive');
+      if (existing) { skipCount++; continue; }
+
+      // Cari template MDS
+      const eq  = equipmentList.find(e => e.idAset === equipId);
+      const tpl = eq ? templateList.find(t => t.name === eq.namaEquipment) : null;
+      if (!tpl) { noTplCount++; continue; }
+
+      const eqIndex = equipmentList.findIndex(e => e.idAset === equipId);
+      const seqNo   = eqIndex !== -1 ? eqIndex + 1 : 0;
+
+      try {
+        await insertRow('preventive_maintenance', {
+          title: 'PREVENTIVE', equipment_id: equipId,
+          mds_template_id: tpl.id, interval_days: tpl.interval_days,
+          plan_start: planStart, next_due: planStart,
+          sequence_no: seqNo,
+          status: 'scheduled', description: '',
         });
-    } catch (genErr) {
-      console.warn('Generate monthly WO error (non-fatal):', genErr);
+        savedCount++;
+      } catch (err) {
+        errors.push(eq?.namaEquipment || equipId);
+      }
     }
 
-    showToast('Jadwal PM berhasil disimpan & plan WO 1 tahun di-generate!', 'success');
+    // Generate WO
+    if (savedCount > 0) {
+      try {
+        const pDate = new Date(planStart);
+        await supabase.rpc('generate_yearly_pm_work_orders', { p_year: pDate.getFullYear() });
+      } catch (genErr) {
+        console.warn('Generate monthly WO error (non-fatal):', genErr);
+      }
+    }
+
+    // Toast summary
+    let msg = '';
+    if (savedCount > 0)  msg += `${savedCount} jadwal berhasil disimpan. `;
+    if (skipCount > 0)   msg += `${skipCount} sudah aktif (dilewati). `;
+    if (noTplCount > 0)  msg += `${noTplCount} tanpa template MDS (dilewati).`;
+    if (errors.length)   msg += ` Gagal: ${errors.join(', ')}.`;
+    showToast(msg.trim() || 'Selesai.', savedCount > 0 ? 'success' : 'warning');
 
     // Reset form
-    ['sched-equip', 'sched-start'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.value = '';
-    });
+    selectedEquipIds.clear();
+    updateEquipMsTriggerLabel();
+    buildEquipMultiSelectItems();
+    const startEl = document.getElementById('sched-start');
+    if (startEl) startEl.value = '';
     document.getElementById('sched-freq').value = '';
     document.getElementById('sched-template-id').value = '';
     const infoEl = document.getElementById('sched-template-info');
