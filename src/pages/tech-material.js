@@ -136,10 +136,8 @@ function showTakeOutModal(mat) {
         const notes = overlay.querySelector('#takeout-notes').value.trim();
         
         try {
-          // Update stok di material_stock
-          await updateRow('material_stock', mat.id, { quantity: newQty });
-          
-          // Catat ke material_logs
+          // Catat ke material_logs TERLEBIH DAHULU
+          // Agar jika RLS error, stok belum terlanjur berkurang
           if (currentProfile) {
             await insertRow('material_logs', {
               material_id: mat.id,
@@ -149,12 +147,15 @@ function showTakeOutModal(mat) {
             });
           }
 
+          // Jika pencatatan log sukses (tidak ada error RLS), baru update stok
+          await updateRow('material_stock', mat.id, { quantity: newQty });
+
           close();
           showSuccessAnimation();
           await loadMaterials();
         } catch (err) {
-          console.error(err);
-          showToast('Gagal mencatat', 'error');
+          console.error('Error saat catat keluar:', err);
+          showToast('Gagal mencatat pengambilan: Akses ditolak atau error sistem.', 'error');
         }
       });
     }

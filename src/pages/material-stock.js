@@ -5,6 +5,8 @@ import { showToast } from '../components/toast.js';
 import { fetchAll, insertRow, updateRow, deleteRow, supabase } from '../lib/supabase.js';
 import { MATERIAL_CATEGORIES, UNITS } from '../utils/constants.js';
 import { formatNumber, debounce, escapeHtml, formatDateTime } from '../utils/helpers.js';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 let allMaterials = [];
 
@@ -14,43 +16,98 @@ export async function renderMaterialStock() {
   content.innerHTML = `
     <div class="animate-fade-in">
       <div class="page-header">
-        <h2>Stok Material</h2>
+        <h2>Material</h2>
         <div class="page-header-actions d-flex">
-          <button class="btn btn-outline-secondary d-flex align-items-center gap-2 me-2" id="log-mat-btn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            <span>Riwayat Log</span>
-          </button>
           <button class="btn btn-primary d-flex align-items-center gap-2" id="add-mat-btn">${icons.plus} <span>Tambah Material</span></button>
         </div>
       </div>
-      <div class="toolbar">
-        <div class="search-box">
-          ${icons.search}
-          <input type="text" class="form-control form-control-sm" id="mat-search" placeholder="Cari material..." />
+      
+      <ul class="nav nav-tabs mb-3" id="material-tabs" style="border-bottom: 2px solid #e2e8f0;">
+        <li class="nav-item" style="margin-bottom: -2px;">
+          <a class="nav-link active text-dark fw-bold" href="#" data-tab="stock" style="border: none; border-bottom: 2px solid var(--bs-primary); background: transparent;">Daftar Stok</a>
+        </li>
+        <li class="nav-item" style="margin-bottom: -2px;">
+          <a class="nav-link text-muted" href="#" data-tab="log" style="border: none; border-bottom: 2px solid transparent; background: transparent;">Riwayat Pengambilan</a>
+        </li>
+      </ul>
+
+      <!-- TAB STOK -->
+      <div id="tab-stock">
+        <div class="toolbar mb-3">
+          <div class="search-box">
+            ${icons.search}
+            <input type="text" class="form-control form-control-sm" id="mat-search" placeholder="Cari material..." />
+          </div>
+          <div class="filter-group">
+            <select class="form-select form-select-sm" id="filter-mat-category" style="min-width:150px">
+              <option value="">Semua Kategori</option>
+              ${MATERIAL_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+            </select>
+            <select class="form-select form-select-sm" id="filter-mat-stock" style="min-width:130px">
+              <option value="">Semua Stok</option>
+              <option value="low">Stok Rendah</option>
+              <option value="ok">Stok Aman</option>
+            </select>
+          </div>
         </div>
-        <div class="filter-group">
-          <select class="form-select form-select-sm" id="filter-mat-category" style="min-width:150px">
-            <option value="">Semua Kategori</option>
-            ${MATERIAL_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('')}
-          </select>
-          <select class="form-select form-select-sm" id="filter-mat-stock" style="min-width:130px">
-            <option value="">Semua Stok</option>
-            <option value="low">Stok Rendah</option>
-            <option value="ok">Stok Aman</option>
-          </select>
+        <div id="mat-table-wrapper">
+          <div class="page-loading"><div class="spinner"></div></div>
         </div>
       </div>
-      <div id="mat-table-wrapper">
-        <div class="page-loading"><div class="spinner"></div></div>
+      
+      <!-- TAB LOG -->
+      <div id="tab-log" style="display:none;">
+        <div class="d-flex justify-content-end mb-3">
+          <button class="btn btn-outline-success d-flex align-items-center gap-2" id="export-log-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <span>Export ke Excel</span>
+          </button>
+        </div>
+        <div id="log-wrapper">
+          <div class="page-loading"><div class="spinner"></div></div>
+        </div>
       </div>
     </div>
   `;
 
+  // Tab switching logic
+  const tabs = content.querySelectorAll('#material-tabs .nav-link');
+  const addBtn = document.getElementById('add-mat-btn');
+  
+  tabs.forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      e.preventDefault();
+      
+      // Reset all tabs
+      tabs.forEach(t => {
+        t.classList.remove('active', 'text-dark', 'fw-bold');
+        t.classList.add('text-muted');
+        t.style.borderBottomColor = 'transparent';
+      });
+      
+      // Activate clicked tab
+      tab.classList.remove('text-muted');
+      tab.classList.add('active', 'text-dark', 'fw-bold');
+      tab.style.borderBottomColor = 'var(--bs-primary)';
+      
+      const target = tab.dataset.tab;
+      document.getElementById('tab-stock').style.display = target === 'stock' ? 'block' : 'none';
+      document.getElementById('tab-log').style.display = target === 'log' ? 'block' : 'none';
+      
+      // Toggle button visibility based on active tab
+      addBtn.style.display = target === 'stock' ? 'flex' : 'none';
+
+      if (target === 'log') {
+        loadMaterialLogs();
+      }
+    });
+  });
+
   document.getElementById('add-mat-btn').addEventListener('click', () => showMaterialForm());
-  document.getElementById('log-mat-btn').addEventListener('click', () => showMaterialLogs());
   document.getElementById('mat-search').addEventListener('input', debounce(filterAndRender));
   document.getElementById('filter-mat-category').addEventListener('change', filterAndRender);
   document.getElementById('filter-mat-stock').addEventListener('change', filterAndRender);
+  document.getElementById('export-log-btn').addEventListener('click', exportMaterialLogs);
 
   await loadMaterials();
 }
@@ -250,62 +307,126 @@ function showMaterialForm(existing = null) {
   });
 }
 
-async function showMaterialLogs() {
-  showModal({
-    title: 'Riwayat Pengambilan Material',
-    size: 'modal-lg',
-    body: `<div id="log-wrapper"><div class="page-loading"><div class="spinner"></div></div></div>`,
-    footer: `<button class="btn btn-outline-secondary" id="close-log">Tutup</button>`,
-    onMount: async (overlay, close) => {
-      overlay.querySelector('#close-log').addEventListener('click', close);
-      const wrapper = overlay.querySelector('#log-wrapper');
-      
-      try {
-        const { data, error } = await supabase
-          .from('material_logs')
-          .select('*, profiles(full_name), material_stock(name, part_number)')
-          .order('created_at', { ascending: false });
+async function loadMaterialLogs() {
+  const wrapper = document.getElementById('log-wrapper');
+  wrapper.innerHTML = `<div class="page-loading"><div class="spinner"></div></div>`;
+  
+  try {
+    const { data, error } = await supabase
+      .from('material_logs')
+      .select('*, profiles(full_name), material_stock(name, part_number)')
+      .order('created_at', { ascending: false });
 
-        if (error) throw error;
+    if (error) throw error;
 
-        if (!data || data.length === 0) {
-          wrapper.innerHTML = `<div class="text-center p-4 text-muted">Belum ada riwayat pengambilan material.</div>`;
-          return;
-        }
-
-        wrapper.innerHTML = `
-          <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-            <table class="table table-hover table-bordered mb-0">
-              <thead class="table-light sticky-top">
-                <tr>
-                  <th>Waktu</th>
-                  <th>Teknisi</th>
-                  <th>Material</th>
-                  <th>Jumlah</th>
-                  <th>Keterangan</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.map(log => `
-                  <tr>
-                    <td class="text-nowrap">${formatDateTime(log.created_at)}</td>
-                    <td>${escapeHtml(log.profiles?.full_name || 'Tidak diketahui')}</td>
-                    <td>
-                      <strong>${escapeHtml(log.material_stock?.name || 'Material dihapus')}</strong><br/>
-                      <small class="text-muted">${escapeHtml(log.material_stock?.part_number || '')}</small>
-                    </td>
-                    <td>${formatNumber(log.quantity)}</td>
-                    <td>${escapeHtml(log.notes || '-')}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        `;
-      } catch (err) {
-        console.error(err);
-        wrapper.innerHTML = `<div class="alert alert-danger">Gagal memuat log material: Pastikan tabel material_logs sudah dibuat.</div>`;
-      }
+    if (!data || data.length === 0) {
+      wrapper.innerHTML = `<div class="empty-state">${icons.fileText || ''}<h4>Belum ada riwayat</h4><p>Data pengambilan material akan muncul di sini.</p></div>`;
+      return;
     }
-  });
+
+    wrapper.innerHTML = `
+      <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Waktu Pengambilan</th>
+                <th>Teknisi</th>
+                <th>Material</th>
+                <th>Part Number</th>
+                <th>Jumlah</th>
+                <th>Keterangan / Keperluan</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map(log => `
+                <tr>
+                  <td class="text-nowrap text-secondary">${formatDateTime(log.created_at)}</td>
+                  <td class="fw-medium">${escapeHtml(log.profiles?.full_name || 'Tidak diketahui')}</td>
+                  <td><strong>${escapeHtml(log.material_stock?.name || 'Material dihapus')}</strong></td>
+                  <td class="text-secondary">${escapeHtml(log.material_stock?.part_number || '-')}</td>
+                  <td><span class="badge bg-primary px-3 rounded-pill">${formatNumber(log.quantity)}</span></td>
+                  <td class="text-muted">${escapeHtml(log.notes || '-')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    console.error(err);
+    wrapper.innerHTML = `<div class="alert alert-danger">Gagal memuat log material. Error: ${err.message || 'Pastikan RLS sudah dikonfigurasi.'}</div>`;
+  }
+}
+
+async function exportMaterialLogs() {
+  try {
+    const { data, error } = await supabase
+      .from('material_logs')
+      .select('*, profiles(full_name), material_stock(name, part_number)')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      showToast('Tidak ada data riwayat untuk diexport', 'warning');
+      return;
+    }
+
+    // Buat Workbook Excel
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Riwayat Pengambilan');
+
+    // Header styling
+    sheet.columns = [
+      { header: 'Waktu Pengambilan', key: 'date', width: 22 },
+      { header: 'Teknisi', key: 'tech', width: 25 },
+      { header: 'Nama Material', key: 'material', width: 30 },
+      { header: 'Part Number', key: 'part', width: 20 },
+      { header: 'Jumlah', key: 'qty', width: 12 },
+      { header: 'Keterangan', key: 'notes', width: 40 }
+    ];
+
+    // Styling Header
+    sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+    sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+    // Tambah data ke Sheet
+    data.forEach(log => {
+      sheet.addRow({
+        date: formatDateTime(log.created_at),
+        tech: log.profiles?.full_name || 'Tidak diketahui',
+        material: log.material_stock?.name || 'Material dihapus',
+        part: log.material_stock?.part_number || '-',
+        qty: log.quantity,
+        notes: log.notes || '-'
+      });
+    });
+
+    // Alignment dan Border untuk tiap cell
+    sheet.eachRow((row, rowNumber) => {
+      row.eachCell((cell) => {
+        if (rowNumber > 1) {
+          cell.alignment = { vertical: 'middle', wrapText: true };
+        }
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+
+    // Generate blob dan download sebagai .xlsx
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, `Log_Pengambilan_Material_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+  } catch (err) {
+    console.error(err);
+    showToast('Gagal mengekspor data ke Excel', 'error');
+  }
 }
