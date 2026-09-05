@@ -1,11 +1,11 @@
 import { getCurrentUser, getCurrentProfile } from './lib/supabase.js';
 
 const PUBLIC_ROUTES = ['/login'];
-const ADMIN_ONLY_ROUTES = ['/user-controller', '/admin-broadcast'];
+const ADMIN_ONLY_ROUTES = ['/user-controller'];
 // Planner can access /technician schedule in sidebar, so removing it from ADMIN_ONLY_ROUTES if planner can access. 
 // Let's check sidebar.js: { path: '/technician', label: 'Jadwal & Teknisi', icon: 'calendarCheck', roles: ['admin', 'planner'] },
 // Wait, I will define routes based on roles to be cleaner.
-const TECH_ROUTES = ['/tech-wo-list', '/tech-create-wo', '/tech-inbox', '/tech-profile', '/tech-wo-checklist'];
+const TECH_ROUTES = ['/tech-wo-list', '/tech-create-wo', '/tech-material', '/tech-profile', '/tech-wo-checklist'];
 
 /**
  * Auth guard: redirects appropriately based on role.

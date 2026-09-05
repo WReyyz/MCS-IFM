@@ -2,9 +2,9 @@ import { renderAppShell } from '../components/app-shell.js';
 import { icons } from '../components/icons.js';
 import { showModal, showConfirm } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
-import { fetchAll, insertRow, updateRow, deleteRow } from '../lib/supabase.js';
+import { fetchAll, insertRow, updateRow, deleteRow, supabase } from '../lib/supabase.js';
 import { MATERIAL_CATEGORIES, UNITS } from '../utils/constants.js';
-import { formatNumber, debounce, escapeHtml } from '../utils/helpers.js';
+import { formatNumber, debounce, escapeHtml, formatDateTime } from '../utils/helpers.js';
 
 let allMaterials = [];
 
@@ -15,7 +15,11 @@ export async function renderMaterialStock() {
     <div class="animate-fade-in">
       <div class="page-header">
         <h2>Stok Material</h2>
-        <div class="page-header-actions">
+        <div class="page-header-actions d-flex">
+          <button class="btn btn-outline-secondary d-flex align-items-center gap-2 me-2" id="log-mat-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span>Riwayat Log</span>
+          </button>
           <button class="btn btn-primary d-flex align-items-center gap-2" id="add-mat-btn">${icons.plus} <span>Tambah Material</span></button>
         </div>
       </div>
@@ -43,6 +47,7 @@ export async function renderMaterialStock() {
   `;
 
   document.getElementById('add-mat-btn').addEventListener('click', () => showMaterialForm());
+  document.getElementById('log-mat-btn').addEventListener('click', () => showMaterialLogs());
   document.getElementById('mat-search').addEventListener('input', debounce(filterAndRender));
   document.getElementById('filter-mat-category').addEventListener('change', filterAndRender);
   document.getElementById('filter-mat-stock').addEventListener('change', filterAndRender);
@@ -241,6 +246,66 @@ function showMaterialForm(existing = null) {
           showToast(err.message || 'Gagal menyimpan', 'error');
         }
       });
+    }
+  });
+}
+
+async function showMaterialLogs() {
+  showModal({
+    title: 'Riwayat Pengambilan Material',
+    size: 'modal-lg',
+    body: `<div id="log-wrapper"><div class="page-loading"><div class="spinner"></div></div></div>`,
+    footer: `<button class="btn btn-outline-secondary" id="close-log">Tutup</button>`,
+    onMount: async (overlay, close) => {
+      overlay.querySelector('#close-log').addEventListener('click', close);
+      const wrapper = overlay.querySelector('#log-wrapper');
+      
+      try {
+        const { data, error } = await supabase
+          .from('material_logs')
+          .select('*, profiles(full_name), material_stock(name, part_number)')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          wrapper.innerHTML = `<div class="text-center p-4 text-muted">Belum ada riwayat pengambilan material.</div>`;
+          return;
+        }
+
+        wrapper.innerHTML = `
+          <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+            <table class="table table-hover table-bordered mb-0">
+              <thead class="table-light sticky-top">
+                <tr>
+                  <th>Waktu</th>
+                  <th>Teknisi</th>
+                  <th>Material</th>
+                  <th>Jumlah</th>
+                  <th>Keterangan</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.map(log => `
+                  <tr>
+                    <td class="text-nowrap">${formatDateTime(log.created_at)}</td>
+                    <td>${escapeHtml(log.profiles?.full_name || 'Tidak diketahui')}</td>
+                    <td>
+                      <strong>${escapeHtml(log.material_stock?.name || 'Material dihapus')}</strong><br/>
+                      <small class="text-muted">${escapeHtml(log.material_stock?.part_number || '')}</small>
+                    </td>
+                    <td>${formatNumber(log.quantity)}</td>
+                    <td>${escapeHtml(log.notes || '-')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } catch (err) {
+        console.error(err);
+        wrapper.innerHTML = `<div class="alert alert-danger">Gagal memuat log material: Pastikan tabel material_logs sudah dibuat.</div>`;
+      }
     }
   });
 }

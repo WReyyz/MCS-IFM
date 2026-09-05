@@ -6,7 +6,7 @@ let notifCount = 0;
 
 /**
  * Render the Technician App Shell (no sidebar, uses bottom nav)
- * @param {string} activeTab - 'wo-list' | 'create-wo' | 'inbox' | 'profile'
+ * @param {string} activeTab - 'wo-list' | 'create-wo' | 'material' | 'profile'
  * @returns {{ app: HTMLElement, content: HTMLElement }}
  */
 export async function renderTechShell(activeTab = 'wo-list') {
@@ -42,10 +42,7 @@ export async function renderTechShell(activeTab = 'wo-list') {
       </div>
     </div>
     <div class="tech-topbar-right">
-      <div class="tech-notif-badge" id="topbar-notif-btn" style="cursor:pointer;color:var(--sidebar-nav-color)">
-        ${icons.bell}
-        ${notifCount > 0 ? '<span class="badge-dot"></span>' : ''}
-      </div>
+
       <div class="tech-avatar-sm" id="topbar-avatar-btn">${avatarContent}</div>
     </div>
   `;
@@ -68,10 +65,9 @@ export async function renderTechShell(activeTab = 'wo-list') {
       ${icons.plus}
       <span>Buat WO</span>
     </a>
-    <a href="#/tech-inbox" class="tech-nav-item ${activeTab === 'inbox' ? 'active' : ''}" data-tab="inbox">
-      ${icons.bell}
-      <span>Inbox</span>
-      ${notifCount > 0 ? `<span class="tech-nav-badge">${notifCount > 9 ? '9+' : notifCount}</span>` : ''}
+    <a href="#/tech-material" class="tech-nav-item ${activeTab === 'material' ? 'active' : ''}" data-tab="material">
+      ${icons.package}
+      <span>Material</span>
     </a>
     <a href="#/tech-profile" class="tech-nav-item ${activeTab === 'profile' ? 'active' : ''}" data-tab="profile">
       ${icons.user}
@@ -100,9 +96,8 @@ export async function renderTechShell(activeTab = 'wo-list') {
         <a href="#/tech-create-wo" class="nav-item ${activeTab === 'create-wo' ? 'active' : ''}">
           ${icons.plus} Buat WO
         </a>
-        <a href="#/tech-inbox" class="nav-item ${activeTab === 'inbox' ? 'active' : ''}">
-          ${icons.bell} Inbox 
-          ${notifCount > 0 ? `<span class="badge" style="margin-left:auto;background:#EF4444;color:white;padding:2px 6px;border-radius:10px;font-size:10px">${notifCount > 9 ? '9+' : notifCount}</span>` : ''}
+        <a href="#/tech-material" class="nav-item ${activeTab === 'material' ? 'active' : ''}">
+          ${icons.package} Material 
         </a>
         <a href="#/tech-profile" class="nav-item ${activeTab === 'profile' ? 'active' : ''}">
           ${icons.user} Profil
@@ -112,10 +107,7 @@ export async function renderTechShell(activeTab = 'wo-list') {
   `;
   app.appendChild(sidebar);
 
-  // Topbar shortcut navigation
-  topbar.querySelector('#topbar-notif-btn')?.addEventListener('click', () => {
-    window.location.hash = '/tech-inbox';
-  });
+
   topbar.querySelector('#topbar-avatar-btn')?.addEventListener('click', () => {
     window.location.hash = '/tech-profile';
   });

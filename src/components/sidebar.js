@@ -17,7 +17,6 @@ const ALL_MENU_ITEMS = [
   { section: 'MANAJEMEN' },
   { path: '/technician', label: 'Jadwal & Teknisi', icon: 'calendarCheck', roles: ['admin', 'planner'] },
   { path: '/user-controller', label: 'Kontrol Pengguna', icon: 'shield', roles: ['admin'] },
-  { path: '/admin-broadcast', label: 'Broadcast Notifikasi', icon: 'broadcast', roles: ['admin'] },
   { section: 'AKUN' },
   { path: '/profile', label: 'Profil Saya', icon: 'user', roles: ['admin', 'inspector', 'planner', 'manager'] },
 ];

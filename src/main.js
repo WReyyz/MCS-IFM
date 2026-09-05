@@ -14,14 +14,13 @@ import { renderTools } from './pages/tools.js';
 import { renderTechnician } from './pages/technician.js';
 import { renderUserController } from './pages/user-controller.js';
 import { renderPlan } from './pages/plan.js';
-import { renderAdminBroadcast } from './pages/admin-broadcast.js';
 import { renderProfile } from './pages/profile.js';
 import { renderMdsTemplates } from './pages/mds-templates.js';
 
 // Pages - Technician
 import { renderTechWoList } from './pages/tech-wo-list.js';
 import { renderTechCreateWo } from './pages/tech-create-wo.js';
-import { renderTechInbox } from './pages/tech-inbox.js';
+import { renderTechMaterial } from './pages/tech-material.js';
 import { renderTechProfile } from './pages/tech-profile.js';
 import { renderTechWoChecklist } from './pages/tech-wo-checklist.js';
 
@@ -42,14 +41,13 @@ router
   .on('/plan', renderPlan)
   .on('/technician', renderTechnician)
   .on('/user-controller', renderUserController)
-  .on('/admin-broadcast', renderAdminBroadcast)
   .on('/profile', renderProfile)
   .on('/approval', renderApproval)
   .on('/mds-templates', renderMdsTemplates)
   // Technician routes
   .on('/tech-wo-list', renderTechWoList)
   .on('/tech-create-wo', renderTechCreateWo)
-  .on('/tech-inbox', renderTechInbox)
+  .on('/tech-material', renderTechMaterial)
   .on('/tech-profile', renderTechProfile)
   .on('/tech-wo-checklist', renderTechWoChecklist)
   .on('/404', () => {
